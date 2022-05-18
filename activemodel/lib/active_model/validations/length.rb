@@ -1,8 +1,12 @@
 # frozen_string_literal: true
 
+require "active_model/validations/resolve_value"
+
 module ActiveModel
   module Validations
     class LengthValidator < EachValidator # :nodoc:
+      include ResolveValue
+
       MESSAGES  = { is: :wrong_length, minimum: :too_short, maximum: :too_long }.freeze
       CHECKS    = { is: :==, minimum: :>=, maximum: :<= }.freeze
 
@@ -45,12 +49,7 @@ module ActiveModel
           next unless check_value = options[key]
 
           if !value.nil? || skip_nil_check?(key)
-            case check_value
-            when Proc
-              check_value = check_value.call(record)
-            when Symbol
-              check_value = record.send(check_value)
-            end
+            check_value = resolve_value(record, check_value)
             next if value_length.public_send(validity_check, check_value)
           end
 
@@ -117,8 +116,8 @@ module ActiveModel
       #   <tt>too_long</tt>/<tt>too_short</tt>/<tt>wrong_length</tt> message.
       #
       # There is also a list of default options supported by every validator:
-      # +:if+, +:unless+, +:on+ and +:strict+.
-      # See <tt>ActiveModel::Validations#validates</tt> for more information
+      # +:if+, +:unless+, +:on+, and +:strict+.
+      # See ActiveModel::Validations::ClassMethods#validates for more information.
       def validates_length_of(*attr_names)
         validates_with LengthValidator, _merge_attributes(attr_names)
       end

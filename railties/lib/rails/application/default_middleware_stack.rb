@@ -13,7 +13,7 @@ module Rails
 
       def build_stack
         ActionDispatch::MiddlewareStack.new do |middleware|
-          middleware.use ::ActionDispatch::HostAuthorization, config.hosts, config.action_dispatch.hosts_response_app, **config.host_authorization
+          middleware.use ::ActionDispatch::HostAuthorization, config.hosts, **config.host_authorization
 
           if config.force_ssl
             middleware.use ::ActionDispatch::SSL, **config.ssl_options,
@@ -56,7 +56,7 @@ module Rails
             middleware.use ::ActionDispatch::ActionableExceptions
           end
 
-          unless config.cache_classes
+          if config.reloading_enabled?
             middleware.use ::ActionDispatch::Reloader, app.reloader
           end
 

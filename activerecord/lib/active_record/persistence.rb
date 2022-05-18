@@ -62,7 +62,7 @@ module ActiveRecord
       # Active Record callbacks or validations. Though passed values
       # go through Active Record's type casting and serialization.
       #
-      # See <tt>ActiveRecord::Persistence#insert_all</tt> for documentation.
+      # See #insert_all for documentation.
       def insert(attributes, returning: nil, unique_by: nil, record_timestamps: nil)
         insert_all([ attributes ], returning: returning, unique_by: unique_by, record_timestamps: record_timestamps)
       end
@@ -79,7 +79,7 @@ module ActiveRecord
       # duplicate rows are skipped.
       # Override with <tt>:unique_by</tt> (see below).
       #
-      # Returns an <tt>ActiveRecord::Result</tt> with its contents based on
+      # Returns an ActiveRecord::Result with its contents based on
       # <tt>:returning</tt> (see below).
       #
       # ==== Options
@@ -151,7 +151,7 @@ module ActiveRecord
       # Active Record callbacks or validations. Though passed values
       # go through Active Record's type casting and serialization.
       #
-      # See <tt>ActiveRecord::Persistence#insert_all!</tt> for more.
+      # See #insert_all! for more.
       def insert!(attributes, returning: nil, record_timestamps: nil)
         insert_all!([ attributes ], returning: returning, record_timestamps: record_timestamps)
       end
@@ -167,10 +167,9 @@ module ActiveRecord
       # Raises <tt>ActiveRecord::RecordNotUnique</tt> if any rows violate a
       # unique index on the table. In that case, no rows are inserted.
       #
-      # To skip duplicate rows, see <tt>ActiveRecord::Persistence#insert_all</tt>.
-      # To replace them, see <tt>ActiveRecord::Persistence#upsert_all</tt>.
+      # To skip duplicate rows, see #insert_all. To replace them, see #upsert_all.
       #
-      # Returns an <tt>ActiveRecord::Result</tt> with its contents based on
+      # Returns an ActiveRecord::Result with its contents based on
       # <tt>:returning</tt> (see below).
       #
       # ==== Options
@@ -219,7 +218,7 @@ module ActiveRecord
       # it trigger Active Record callbacks or validations. Though passed values
       # go through Active Record's type casting and serialization.
       #
-      # See <tt>ActiveRecord::Persistence#upsert_all</tt> for documentation.
+      # See #upsert_all for documentation.
       def upsert(attributes, on_duplicate: :update, returning: nil, unique_by: nil, record_timestamps: nil)
         upsert_all([ attributes ], on_duplicate: on_duplicate, returning: returning, unique_by: unique_by, record_timestamps: record_timestamps)
       end
@@ -232,8 +231,12 @@ module ActiveRecord
       # The +attributes+ parameter is an Array of Hashes. Every Hash determines
       # the attributes for a single row and must have the same keys.
       #
-      # Returns an <tt>ActiveRecord::Result</tt> with its contents based on
+      # Returns an ActiveRecord::Result with its contents based on
       # <tt>:returning</tt> (see below).
+      #
+      # By default, +upsert_all+ will update all the columns that can be updated when
+      # there is a conflict. These are all the columns except primary keys, read-only
+      # columns, and columns covered by the optional +unique_by+.
       #
       # ==== Options
       #
@@ -268,9 +271,41 @@ module ActiveRecord
       # Active Record's schema_cache.
       #
       # [:on_duplicate]
-      #   Specify a custom SQL for updating rows on conflict.
+      #   Configure the SQL update sentence that will be used in case of conflict.
       #
-      #   NOTE: in this case you must provide all the columns you want to update by yourself.
+      #   NOTE: If you use this option you must provide all the columns you want to update
+      #   by yourself.
+      #
+      #   Example:
+      #
+      #     Commodity.upsert_all(
+      #       [
+      #         { id: 2, name: "Copper", price: 4.84 },
+      #         { id: 4, name: "Gold", price: 1380.87 },
+      #         { id: 6, name: "Aluminium", price: 0.35 }
+      #       ],
+      #       on_duplicate: Arel.sql("price = GREATEST(commodities.price, EXCLUDED.price)")
+      #     )
+      #
+      #   See the related +:update_only+ option. Both options can't be used at the same time.
+      #
+      # [:update_only]
+      #   Provide a list of column names that will be updated in case of conflict. If not provided,
+      #   +upsert_all+ will update all the columns that can be updated. These are all the columns
+      #   except primary keys, read-only columns, and columns covered by the optional +unique_by+
+      #
+      #   Example:
+      #
+      #     Commodity.upsert_all(
+      #       [
+      #         { id: 2, name: "Copper", price: 4.84 },
+      #         { id: 4, name: "Gold", price: 1380.87 },
+      #         { id: 6, name: "Aluminium", price: 0.35 }
+      #       ],
+      #       update_only: [:price] # Only prices will be updated
+      #     )
+      #
+      #   See the related +:on_duplicate+ option. Both options can't be used at the same time.
       #
       # [:record_timestamps]
       #   By default, automatic setting of timestamp columns is controlled by
@@ -294,8 +329,8 @@ module ActiveRecord
       #   ], unique_by: :isbn)
       #
       #   Book.find_by(isbn: "1").title # => "Eloquent Ruby"
-      def upsert_all(attributes, on_duplicate: :update, returning: nil, unique_by: nil, record_timestamps: nil)
-        InsertAll.new(self, attributes, on_duplicate: on_duplicate, returning: returning, unique_by: unique_by, record_timestamps: record_timestamps).execute
+      def upsert_all(attributes, on_duplicate: :update, update_only: nil, returning: nil, unique_by: nil, record_timestamps: nil)
+        InsertAll.new(self, attributes, on_duplicate: on_duplicate, update_only: update_only, returning: returning, unique_by: unique_by, record_timestamps: record_timestamps).execute
       end
 
       # Given an attributes hash, +instantiate+ returns a new instance of
@@ -711,7 +746,7 @@ module ActiveRecord
     # * updated_at/updated_on column is updated if that column is available.
     # * Updates all the attributes that are dirty in this object.
     #
-    # This method raises an ActiveRecord::ActiveRecordError  if the
+    # This method raises an ActiveRecord::ActiveRecordError if the
     # attribute is marked as readonly.
     #
     # Also see #update_column.
@@ -721,6 +756,28 @@ module ActiveRecord
       public_send("#{name}=", value)
 
       save(validate: false)
+    end
+
+    # Updates a single attribute and saves the record.
+    # This is especially useful for boolean flags on existing records. Also note that
+    #
+    # * Validation is skipped.
+    # * \Callbacks are invoked.
+    # * updated_at/updated_on column is updated if that column is available.
+    # * Updates all the attributes that are dirty in this object.
+    #
+    # This method raises an ActiveRecord::ActiveRecordError if the
+    # attribute is marked as readonly.
+    #
+    # If any of the <tt>before_*</tt> callbacks throws +:abort+ the action is cancelled
+    # and #update_attribute! raises ActiveRecord::RecordNotSaved. See
+    # ActiveRecord::Callbacks for further details.
+    def update_attribute!(name, value)
+      name = name.to_s
+      verify_readonly_attribute(name)
+      public_send("#{name}=", value)
+
+      save!(validate: false)
     end
 
     # Updates the attributes of the model from the passed-in hash and saves the
@@ -770,6 +827,7 @@ module ActiveRecord
     def update_columns(attributes)
       raise ActiveRecordError, "cannot update a new record" if new_record?
       raise ActiveRecordError, "cannot update a destroyed record" if destroyed?
+      _raise_readonly_record_error if readonly?
 
       attributes = attributes.transform_keys do |key|
         name = key.to_s
@@ -956,6 +1014,7 @@ module ActiveRecord
     #
     def touch(*names, time: nil)
       _raise_record_not_touched_error unless persisted?
+      _raise_readonly_record_error if readonly?
 
       attribute_names = timestamp_attributes_for_update_in_model
       attribute_names |= names.map! do |name|
@@ -1076,7 +1135,8 @@ module ActiveRecord
 
     def _raise_record_not_destroyed
       @_association_destroy_exception ||= nil
-      raise @_association_destroy_exception || RecordNotDestroyed.new("Failed to destroy the record", self)
+      key = self.class.primary_key
+      raise @_association_destroy_exception || RecordNotDestroyed.new("Failed to destroy #{self.class} with #{key}=#{send(key)}", self)
     ensure
       @_association_destroy_exception = nil
     end

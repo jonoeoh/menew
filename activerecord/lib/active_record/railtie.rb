@@ -102,6 +102,14 @@ module ActiveRecord
       end
     end
 
+    initializer "active_record.shard_selector" do
+      if resolver = config.active_record.shard_resolver
+        options = config.active_record.shard_selector || {}
+
+        config.app_middleware.use ActiveRecord::Middleware::ShardSelector, resolver, options
+      end
+    end
+
     initializer "Check for cache versioning support" do
       config.after_initialize do |app|
         ActiveSupport.on_load(:active_record) do
@@ -137,7 +145,7 @@ To keep using the current cache store, you can turn off cache versioning entirel
 
             filename = ActiveRecord::Tasks::DatabaseTasks.cache_dump_filename(
               db_config.name,
-              schema_cache_path: db_config&.schema_cache_path
+              schema_cache_path: db_config.schema_cache_path
             )
 
             cache = ActiveRecord::ConnectionAdapters::SchemaCache.load_from(filename)
@@ -232,6 +240,8 @@ To keep using the current cache store, you can turn off cache versioning entirel
           :database_selector,
           :database_resolver,
           :database_resolver_context,
+          :shard_selector,
+          :shard_resolver,
           :query_log_tags_enabled,
           :query_log_tags,
           :cache_query_log_tags,
@@ -260,9 +270,6 @@ To keep using the current cache store, you can turn off cache versioning entirel
     # and then establishes the connection.
     initializer "active_record.initialize_database" do
       ActiveSupport.on_load(:active_record) do
-        if ActiveRecord.legacy_connection_handling
-          self.connection_handlers = { ActiveRecord.writing_role => ActiveRecord::Base.default_connection_handler }
-        end
         self.configurations = Rails.application.config.database_configuration
 
         establish_connection
@@ -350,9 +357,9 @@ To keep using the current cache store, you can turn off cache versioning entirel
       end
 
       # Filtered params
-      ActiveSupport.on_load(:action_controller) do
+      ActiveSupport.on_load(:action_controller, run_once: true) do
         if ActiveRecord::Encryption.config.add_to_filter_parameters
-          ActiveRecord::Encryption.install_auto_filtered_parameters(app)
+          ActiveRecord::Encryption.install_auto_filtered_parameters_hook(app)
         end
       end
     end
@@ -375,6 +382,20 @@ To keep using the current cache store, you can turn off cache versioning entirel
 
           if app.config.active_record.cache_query_log_tags
             ActiveRecord::QueryLogs.cache_query_log_tags = true
+          end
+        end
+      end
+    end
+
+    initializer "active_record.unregister_current_scopes_on_unload" do |app|
+      config.after_initialize do
+        if app.config.reloading_enabled?
+          Rails.autoloaders.main.on_unload do |_cpath, value, _abspath|
+            # Conditions are written this way to be robust against custom
+            # implementations of value#is_a? or value#<.
+            if Class === value && ActiveRecord::Base > value
+              value.current_scope = nil
+            end
           end
         end
       end

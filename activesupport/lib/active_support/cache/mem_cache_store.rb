@@ -10,6 +10,7 @@ end
 require "delegate"
 require "active_support/core_ext/enumerable"
 require "active_support/core_ext/array/extract_options"
+require "active_support/core_ext/numeric/time"
 
 module ActiveSupport
   module Cache
@@ -104,7 +105,7 @@ module ActiveSupport
       #
       #   ActiveSupport::Cache::MemCacheStore.new("localhost", "server-downstairs.localnetwork:8229")
       #
-      # If no addresses are provided, but ENV['MEMCACHE_SERVERS'] is defined, it will be used instead. Otherwise,
+      # If no addresses are provided, but <tt>ENV['MEMCACHE_SERVERS']</tt> is defined, it will be used instead. Otherwise,
       # MemCacheStore will connect to localhost:11211 (the default memcached port).
       def initialize(*addresses)
         addresses = addresses.flatten
@@ -121,33 +122,57 @@ module ActiveSupport
           @data = addresses.first
         else
           mem_cache_options = options.dup
-          UNIVERSAL_OPTIONS.each { |name| mem_cache_options.delete(name) }
+          # The value "compress: false" prevents duplicate compression within Dalli.
+          mem_cache_options[:compress] = false
+          (UNIVERSAL_OPTIONS - %i(compress)).each { |name| mem_cache_options.delete(name) }
           @data = self.class.build_mem_cache(*(addresses + [mem_cache_options]))
         end
       end
 
-      # Increment a cached value. This method uses the memcached incr atomic
-      # operator and can only be used on values written with the :raw option.
-      # Calling it on a value not stored with :raw will initialize that value
-      # to zero.
+      # Increment a cached integer value using the memcached incr atomic operator.
+      # Returns the updated value.
+      #
+      # If the key is unset or has expired, it will be set to +amount+:
+      #
+      #   cache.increment("foo") # => 1
+      #   cache.increment("bar", 100) # => 100
+      #
+      # To set a specific value, call #write passing <tt>raw: true</tt>:
+      #
+      #   cache.write("baz", 5, raw: true)
+      #   cache.increment("baz") # => 6
+      #
+      # Incrementing a non-numeric value, or a value written without
+      # <tt>raw: true</tt>, will fail and return +nil+.
       def increment(name, amount = 1, options = nil)
         options = merged_options(options)
         instrument(:increment, name, amount: amount) do
           rescue_error_with nil do
-            @data.with { |c| c.incr(normalize_key(name, options), amount, options[:expires_in]) }
+            @data.with { |c| c.incr(normalize_key(name, options), amount, options[:expires_in], amount) }
           end
         end
       end
 
-      # Decrement a cached value. This method uses the memcached decr atomic
-      # operator and can only be used on values written with the :raw option.
-      # Calling it on a value not stored with :raw will initialize that value
-      # to zero.
+      # Decrement a cached integer value using the memcached decr atomic operator.
+      # Returns the updated value.
+      #
+      # If the key is unset or has expired, it will be set to 0. Memcached
+      # does not support negative counters.
+      #
+      #   cache.decrement("foo") # => 0
+      #
+      # To set a specific value, call #write passing <tt>raw: true</tt>:
+      #
+      #   cache.write("baz", 5, raw: true)
+      #   cache.decrement("baz") # => 4
+      #
+      # Decrementing a non-numeric value, or a value written without
+      # <tt>raw: true</tt>, will fail and return +nil+.
       def decrement(name, amount = 1, options = nil)
         options = merged_options(options)
         instrument(:decrement, name, amount: amount) do
           rescue_error_with nil do
-            @data.with { |c| c.decr(normalize_key(name, options), amount, options[:expires_in]) }
+            @data.with { |c| c.decr(normalize_key(name, options), amount, options[:expires_in], 0) }
           end
         end
       end
@@ -236,8 +261,9 @@ module ActiveSupport
             expires_in += 5.minutes
           end
           rescue_error_with false do
-            # The value "compress: false" prevents duplicate compression within Dalli.
-            @data.with { |c| c.send(method, key, payload, expires_in, **options, compress: false) }
+            # Don't pass compress option to Dalli since we are already dealing with compression.
+            options.delete(:compress)
+            @data.with { |c| c.send(method, key, payload, expires_in, **options) }
           end
         end
 
@@ -251,7 +277,7 @@ module ActiveSupport
           raw_values.each do |key, value|
             entry = deserialize_entry(value, raw: options[:raw])
 
-            unless entry.expired? || entry.mismatched?(normalize_version(keys_to_names[key], options))
+            unless entry.nil? || entry.expired? || entry.mismatched?(normalize_version(keys_to_names[key], options))
               values[keys_to_names[key]] = entry.value
             end
           end
@@ -295,8 +321,13 @@ module ActiveSupport
 
         def rescue_error_with(fallback)
           yield
-        rescue Dalli::DalliError => e
-          logger.error("DalliError (#{e}): #{e.message}") if logger
+        rescue Dalli::DalliError => error
+          logger.error("DalliError (#{error}): #{error.message}") if logger
+          ActiveSupport.error_reporter&.report(
+            error,
+            severity: :warning,
+            source: "mem_cache_store.active_support",
+          )
           fallback
         end
     end

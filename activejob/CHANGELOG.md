@@ -1,71 +1,46 @@
-*   Raise an `SerializationError` in `Serializer::ModuleSerializer`
-    if the module name is not present. 
+*   Update `ActiveJob::QueueAdapters::QueAdapter` te remove deprecation warning
 
-    *Veerpal Brar*
+    Remove a deprecation warning introduced in que 1.2 to prepare for changes in
+    que 2.0 necessary for Ruby 3 compatibility.
 
+    *Damir Zekic* and *Adis Hasovic*
 
-## Rails 7.0.0.alpha2 (September 15, 2021) ##
+*   Add missing `bigdecimal` require in `ActiveJob::Arguments`
 
-*   No changes.
+    Could cause `uninitialized constant ActiveJob::Arguments::BigDecimal (NameError)`
+    when loading Active Job in isolation.
 
+    *Jean Boussier*
 
-## Rails 7.0.0.alpha1 (September 15, 2021) ##
+*   Allow testing `discard_on/retry_on ActiveJob::DeserializationError`
 
-*   Allow a job to retry indefinitely
+    Previously in `perform_enqueued_jobs`, `deserialize_arguments_if_needed`
+    was called before calling `perform_now`. When a record no longer exists
+    and is serialized using GlobalID this led to raising
+    an `ActiveJob::DeserializationError` before reaching `perform_now` call.
+    This behaviour makes difficult testing the job `discard_on/retry_on` logic.
 
-    The `attempts` parameter of the `retry_on` method now accepts the
-    symbol reference `:unlimited` in addition to a specific number of retry
-    attempts to allow a developer to specify that a job should retry
-    forever until it succeeds.
+    Now `deserialize_arguments_if_needed` call is postponed to when `perform_now`
+    is called.
 
-        class MyJob < ActiveJob::Base
-          retry_on(AlwaysRetryException, attempts: :unlimited)
+    Example:
 
-          # the actual job code
-        end
+    ```ruby
+    class UpdateUserJob < ActiveJob::Base
+      discard_on ActiveJob::DeserializationError
 
-    *Daniel Morton*
+      def perform(user)
+        # ...
+      end
+    end
 
-*   Added possibility to check on `:priority` in test helper methods
-    `assert_enqueued_with` and `assert_performed_with`.
+    # In the test
+    User.destroy_all
+    assert_nothing_raised do
+      perform_enqueued_jobs only: UpdateUserJob
+    end
+    ```
 
-    *Wojciech Wnętrzak*
+    *Jacopo Beschi*
 
-*   OpenSSL constants are now used for Digest computations.
-
-    *Dirkjan Bussink*
-
-*   Add a Serializer for the Range class.
-
-    This should allow things like `MyJob.perform_later(range: 1..100)`.
-
-*   Communicate enqueue failures to callers of `perform_later`.
-
-    `perform_later` can now optionally take a block which will execute after
-    the adapter attempts to enqueue the job. The block will receive the job
-    instance as an argument even if the enqueue was not successful.
-    Additionally, `ActiveJob` adapters now have the ability to raise an
-    `ActiveJob::EnqueueError` which will be caught and stored in the job
-    instance so code attempting to enqueue jobs can inspect any raised
-    `EnqueueError` using the block.
-
-        MyJob.perform_later do |job|
-          unless job.successfully_enqueued?
-            if job.enqueue_error&.message == "Redis was unavailable"
-              # invoke some code that will retry the job after a delay
-            end
-          end
-        end
-
-    *Daniel Morton*
-
-*   Don't log rescuable exceptions defined with `rescue_from`.
-
-    *Hu Hailin*
-
-*   Allow `rescue_from` to rescue all exceptions.
-
-    *Adrianna Chang*, *Étienne Barrié*
-
-
-Please check [6-1-stable](https://github.com/rails/rails/blob/6-1-stable/activejob/CHANGELOG.md) for previous changes.
+Please check [7-0-stable](https://github.com/rails/rails/blob/7-0-stable/activejob/CHANGELOG.md) for previous changes.

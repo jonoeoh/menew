@@ -235,6 +235,9 @@ module ActiveRecord
           if has_inverse? && inverse_of.nil?
             raise InverseOfAssociationNotFoundError.new(self)
           end
+          if has_inverse? && inverse_of == self
+            raise InverseOfAssociationRecursiveError.new(self)
+          end
         end
       end
 
@@ -292,6 +295,12 @@ module ActiveRecord
 
       def strict_loading?
         options[:strict_loading]
+      end
+
+      def strict_loading_violation_message(owner)
+        message = +"`#{owner}` is marked for strict_loading."
+        message << " The #{polymorphic? ? "polymorphic association" : "#{klass} association"}"
+        message << " named `:#{name}` cannot be lazily loaded."
       end
 
       protected
@@ -632,6 +641,7 @@ module ActiveRecord
         # with the current reflection's klass name.
         def valid_inverse_reflection?(reflection)
           reflection &&
+            reflection != self &&
             foreign_key == reflection.foreign_key &&
             klass <= reflection.active_record &&
             can_find_inverse_of_automatically?(reflection, true)
@@ -1027,7 +1037,7 @@ module ActiveRecord
       end
 
       def join_scopes(table, predicate_builder, klass = self.klass, record = nil) # :nodoc:
-        scopes = @previous_reflection.join_scopes(table, predicate_builder, record) + super
+        scopes = @previous_reflection.join_scopes(table, predicate_builder, klass, record) + super
         scopes << build_scope(table, predicate_builder, klass).instance_exec(record, &source_type_scope)
       end
 

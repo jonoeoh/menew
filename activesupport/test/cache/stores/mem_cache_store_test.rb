@@ -19,21 +19,29 @@ class MemCacheStoreTest < ActiveSupport::TestCase
     end
   end
 
-  class UnavailableDalliServer < Dalli::Server
-    def alive?
+  class UnavailableDalliServer < Dalli::Protocol::Binary
+    def alive? # before https://github.com/petergoldstein/dalli/pull/863
+      false
+    end
+
+    def ensure_connected! # after https://github.com/petergoldstein/dalli/pull/863
       false
     end
   end
 
-  begin
-    servers = ENV["MEMCACHE_SERVERS"] || "localhost:11211"
-    ss = Dalli::Client.new(servers).stats
-    raise Dalli::DalliError unless ss[servers] || ss[servers + ":11211"]
-
+  if ENV["CI"]
     MEMCACHE_UP = true
-  rescue Dalli::DalliError
-    $stderr.puts "Skipping memcached tests. Start memcached and try again."
-    MEMCACHE_UP = false
+  else
+    begin
+      servers = ENV["MEMCACHE_SERVERS"] || "localhost:11211"
+      ss = Dalli::Client.new(servers).stats
+      raise Dalli::DalliError unless ss[servers] || ss[servers + ":11211"]
+
+      MEMCACHE_UP = true
+    rescue Dalli::DalliError
+      $stderr.puts "Skipping memcached tests. Start memcached and try again."
+      MEMCACHE_UP = false
+    end
   end
 
   def lookup_store(options = {})
@@ -52,6 +60,8 @@ class MemCacheStoreTest < ActiveSupport::TestCase
   end
 
   def after_teardown
+    return unless defined?(@_stores) # because skipped test
+
     stores, @_stores = @_stores, []
     stores.each do |store|
       # Eagerly closing Dalli connection avoid file descriptor exhaustion.
@@ -73,10 +83,19 @@ class MemCacheStoreTest < ActiveSupport::TestCase
   # Overrides test from LocalCacheBehavior in order to stub out the cache clear
   # and replace it with a delete.
   def test_clear_also_clears_local_cache
-    key = "#{@namespace}:foo"
-    client.stub(:flush_all, -> { client.delete(key) }) do
-      super
+    key = SecureRandom.uuid
+    cache = lookup_store(raw: true)
+    stub_called = false
+
+    client(cache).stub(:flush_all, -> { stub_called = true; client.delete("#{@namespace}:#{key}") }) do
+      cache.with_local_cache do
+        cache.write(key, SecureRandom.alphanumeric)
+        cache.clear
+        assert_nil cache.read(key)
+      end
+      assert_nil cache.read(key)
     end
+    assert stub_called
   end
 
   def test_raw_values
@@ -108,16 +127,36 @@ class MemCacheStoreTest < ActiveSupport::TestCase
     end
   end
 
+  def test_increment_unset_key
+    assert_equal 1, @cache.increment("foo")
+    assert_equal "1", @cache.read("foo", raw: true)
+  end
+
+  def test_write_expires_at
+    cache = lookup_store(raw: true, namespace: nil)
+
+    Time.stub(:now, Time.now) do
+      assert_called_with client(cache), :set, [ "key_with_expires_at", "bar", 30 * 60, Hash ] do
+        cache.write("key_with_expires_at", "bar", expires_at: 30.minutes.from_now)
+      end
+    end
+  end
+
   def test_increment_expires_in
     cache = lookup_store(raw: true, namespace: nil)
-    assert_called_with client(cache), :incr, [ "foo", 1, 60 ] do
+    assert_called_with client(cache), :incr, [ "foo", 1, 60, 1 ] do
       cache.increment("foo", 1, expires_in: 60)
     end
   end
 
+  def test_decrement_unset_key
+    assert_equal 0, @cache.decrement("foo")
+    assert_equal "0", @cache.read("foo", raw: true)
+  end
+
   def test_decrement_expires_in
     cache = lookup_store(raw: true, namespace: nil)
-    assert_called_with client(cache), :decr, [ "foo", 1, 60 ] do
+    assert_called_with client(cache), :decr, [ "foo", 1, 60, 0 ] do
       cache.decrement("foo", 1, expires_in: 60)
     end
   end
@@ -268,6 +307,23 @@ class MemCacheStoreTest < ActiveSupport::TestCase
     end
   end
 
+  def test_can_read_multi_entries_raw_values_from_dalli_store
+    key = "test-with-nil-value-the-way-the-dalli-store-did"
+
+    @cache.instance_variable_get(:@data).with { |c| c.set(@cache.send(:normalize_key, key, nil), nil, 0, compress: false) }
+    assert_equal({}, @cache.send(:read_multi_entries, [key]))
+  end
+
+  def test_deprecated_connection_pool_works
+    assert_deprecated do
+      cache = ActiveSupport::Cache.lookup_store(:mem_cache_store, pool_size: 2, pool_timeout: 1)
+      pool = cache.instance_variable_get(:@data) # loads 'connection_pool' gem
+      assert_kind_of ::ConnectionPool, pool
+      assert_equal 2, pool.size
+      assert_equal 1, pool.instance_variable_get(:@timeout)
+    end
+  end
+
   private
     def random_string(length)
       (0...length).map { (65 + rand(26)).chr }.join
@@ -288,17 +344,21 @@ class MemCacheStoreTest < ActiveSupport::TestCase
     end
 
     def emulating_unavailability
-      old_server = Dalli.send(:remove_const, :Server)
-      Dalli.const_set(:Server, UnavailableDalliServer)
+      old_server = Dalli::Protocol.send(:remove_const, :Binary)
+      Dalli::Protocol.const_set(:Binary, UnavailableDalliServer)
 
       yield ActiveSupport::Cache::MemCacheStore.new
     ensure
-      Dalli.send(:remove_const, :Server)
-      Dalli.const_set(:Server, old_server)
+      Dalli::Protocol.send(:remove_const, :Binary)
+      Dalli::Protocol.const_set(:Binary, old_server)
     end
 
     def servers(cache = @cache)
-      client(cache).instance_variable_get(:@servers)
+      if client(cache).instance_variable_defined?(:@normalized_servers)
+        client(cache).instance_variable_get(:@normalized_servers)
+      else
+        client(cache).instance_variable_get(:@servers)
+      end
     end
 
     def client(cache = @cache)
