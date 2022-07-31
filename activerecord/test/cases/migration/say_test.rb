@@ -77,11 +77,10 @@ module ActiveRecord
       end
 
       def test_migration_say_with_time_and_no_block_given
-        error = assert_raises LocalJumpError do
+        error = assert_raises(ArgumentError) do
           ActiveRecord::Migration.say_with_time("Bar")
         end
-
-        assert_match(/no block given/, error.message)
+        assert_equal "Missing block", error.message
       end
     end
   end
