@@ -220,6 +220,26 @@ module ActiveRecord
       end
     end
 
+    class DownOnlyMigration < SilentMigration
+      def change
+        down_only { execute "update horses set oldie = 2" }
+      end
+    end
+
+    class RevertingMigration < SilentMigration
+      attr_writer :test
+      def change
+        @test.yield reverting?
+      end
+    end
+
+    class MigratingMigration < SilentMigration
+      attr_writer :test
+      def change
+        @test.yield migrating?
+      end
+    end
+
     self.use_transactional_tests = false
 
     setup do
@@ -522,6 +542,47 @@ module ActiveRecord
       connection = ActiveRecord::Base.connection
       assert_not connection.column_exists?(:horses, :oldie)
       Horse.reset_column_information
+    end
+
+    def test_down_only
+      InvertibleMigration.new.migrate(:up)
+      horse1 = Horse.create
+      # populates existing horses with oldie = 1 but new ones have default 0
+      UpOnlyMigration.new.migrate(:up)
+      # sets oldie = 2 for existing records
+      DownOnlyMigration.new.migrate(:down)
+      Horse.reset_column_information
+      horse1.reload
+      horse2 = Horse.create
+
+      assert_equal 2, horse1.oldie # created before reverting
+      assert_equal 0, horse2.oldie # created after migrations
+
+      Horse.reset_column_information
+    end
+
+    def test_reverting
+      received = nil
+      migration = RevertingMigration.new
+      migration.test = ->(reverting) {
+        received = reverting
+      }
+      migration.migrate :up
+      assert_equal false, received
+      migration.migrate :down
+      assert_equal true, received
+    end
+
+    def test_migrating
+      received = nil
+      migration = MigratingMigration.new
+      migration.test = ->(migrating) {
+        received = migrating
+      }
+      migration.migrate :up
+      assert_equal true, received
+      migration.migrate :down
+      assert_equal false, received
     end
   end
 end
