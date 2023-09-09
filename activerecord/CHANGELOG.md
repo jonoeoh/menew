@@ -1,3 +1,30 @@
+*   Add support for `index` option with `add_column`
+
+    Before:
+    ```ruby
+    class AddEmailAndPhoneNumberToUsers < ActiveRecord::Migration[7.1]
+      def change
+        add_column :users, :email, :string
+        add_column :users, :phone_number, :string
+
+        add_index :users, :email, unique: true
+        add_index :users, :phone_number
+      end
+    end
+    ```
+
+    After:
+    ```ruby
+    class AddEmailAndPhoneNumberToUsers < ActiveRecord::Migration[7.1]
+      def change
+        add_column :users, :email, :string, index: { unique: true }
+        add_column :users, :phone_number, :string, index: true
+      end
+    end
+    ```
+
+    *Deepak Mahakale*
+
 *   Adds support for `if_not_exists` when adding a check constraint.
 
     ```ruby
