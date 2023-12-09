@@ -1,5 +1,10 @@
 ## Rails 8.0.0.beta1 (September 26, 2024) ##
 
+*   Render `[accept-charset="UTF-8"]` on `<form>` elements rendered by
+    `button_to`
+
+    *Sean Doyle*
+
 *   Enable DependencyTracker to evaluate renders with trailing interpolation.
 
     ```erb
