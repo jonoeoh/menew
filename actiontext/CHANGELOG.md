@@ -1,3 +1,7 @@
+*   Clear embeds when emptying an `ActionText::RichText`.
+
+    *Joé Dupuis*
+
 *   Dispatch direct-upload events on attachment uploads
 
     When using Action Text's rich textarea,  it's possible to attach files to the
