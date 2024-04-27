@@ -1,5 +1,14 @@
 ## Rails 8.0.0.beta1 (September 26, 2024) ##
 
+*   Allow `ActiveRecord::Base#pluck` to accept hash arguments with symbol and string values.
+
+    ```ruby
+    Post.joins(:comments).pluck(:id, comments: :id)
+    Post.joins(:comments).pluck("id", "comments" => "id")
+    ```
+
+    *Joshua Young*
+
 *   Allow `drop_table` to accept an array of table names.
 
     This will let you to drop multiple tables in a single call.
