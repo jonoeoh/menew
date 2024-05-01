@@ -839,7 +839,7 @@ module ActionView
     class FormBuilder
       # Wraps ActionView::Helpers::FormOptionsHelper#select for form builders:
       #
-      #   <%= form_for @post do |f| %>
+      #   <%= form_with model: @post do |f| %>
       #     <%= f.select :person_id, Person.all.collect { |p| [ p.name, p.id ] }, include_blank: true %>
       #     <%= f.submit %>
       #   <% end %>
@@ -851,7 +851,7 @@ module ActionView
 
       # Wraps ActionView::Helpers::FormOptionsHelper#collection_select for form builders:
       #
-      #   <%= form_for @post do |f| %>
+      #   <%= form_with model: @post do |f| %>
       #     <%= f.collection_select :person_id, Author.all, :id, :name_with_initial, prompt: true %>
       #     <%= f.submit %>
       #   <% end %>
@@ -863,7 +863,7 @@ module ActionView
 
       # Wraps ActionView::Helpers::FormOptionsHelper#grouped_collection_select for form builders:
       #
-      #   <%= form_for @city do |f| %>
+      #   <%= form_with model: @city do |f| %>
       #     <%= f.grouped_collection_select :country_id, @continents, :countries, :name, :id, :name %>
       #     <%= f.submit %>
       #   <% end %>
@@ -875,7 +875,7 @@ module ActionView
 
       # Wraps ActionView::Helpers::FormOptionsHelper#time_zone_select for form builders:
       #
-      #   <%= form_for @user do |f| %>
+      #   <%= form_with model: @user do |f| %>
       #     <%= f.time_zone_select :time_zone, nil, include_blank: true %>
       #     <%= f.submit %>
       #   <% end %>
@@ -887,7 +887,7 @@ module ActionView
 
       # Wraps ActionView::Helpers::FormOptionsHelper#weekday_select for form builders:
       #
-      #   <%= form_for @user do |f| %>
+      #   <%= form_with model: @user do |f| %>
       #     <%= f.weekday_select :weekday, include_blank: true %>
       #     <%= f.submit %>
       #   <% end %>
@@ -899,7 +899,7 @@ module ActionView
 
       # Wraps ActionView::Helpers::FormOptionsHelper#collection_check_boxes for form builders:
       #
-      #   <%= form_for @post do |f| %>
+      #   <%= form_with model: @post do |f| %>
       #     <%= f.collection_check_boxes :author_ids, Author.all, :id, :name_with_initial %>
       #     <%= f.submit %>
       #   <% end %>
@@ -911,7 +911,7 @@ module ActionView
 
       # Wraps ActionView::Helpers::FormOptionsHelper#collection_radio_buttons for form builders:
       #
-      #   <%= form_for @post do |f| %>
+      #   <%= form_with model: @post do |f| %>
       #     <%= f.collection_radio_buttons :author_id, Author.all, :id, :name_with_initial %>
       #     <%= f.submit %>
       #   <% end %>
