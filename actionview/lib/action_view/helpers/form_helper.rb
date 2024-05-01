@@ -30,20 +30,20 @@ module ActionView
     # when the form is initially displayed, input fields corresponding to attributes
     # of the resource should show the current values of those attributes.
     #
-    # In \Rails, this is usually achieved by creating the form using +form_for+ and
-    # a number of related helper methods. +form_for+ generates an appropriate <tt>form</tt>
-    # tag and yields a form builder object that knows the model the form is about.
-    # Input fields are created by calling methods defined on the form builder, which
-    # means they are able to generate the appropriate names and default values
-    # corresponding to the model attributes, as well as convenient IDs, etc.
-    # Conventions in the generated field names allow controllers to receive form data
-    # nicely structured in +params+ with no effort on your side.
+    # In \Rails, this is usually achieved by creating the form using either +form_with+
+    # or +form_for+ and a number of related helper methods. +form_for+ generates an
+    # appropriate <tt>form</tt> tag and yields a form builder object that knows the
+    # model the form is about. Input fields are created by calling methods defined on
+    # the form builder, which means they are able to generate the appropriate names and
+    # default values corresponding to the model attributes, as well as convenient IDs,
+    # etc. Conventions in the generated field names allow controllers to receive form
+    # data nicely structured in +params+ with no effort on your side.
     #
     # For example, to create a new person you typically set up a new instance of
     # +Person+ in the <tt>PeopleController#new</tt> action, <tt>@person</tt>, and
-    # in the view template pass that object to +form_for+:
+    # in the view template pass that object to +form_with+ or +form_for+:
     #
-    #   <%= form_for @person do |f| %>
+    #   <%= form_with model: @person do |f| %>
     #     <%= f.label :first_name %>:
     #     <%= f.text_field :first_name %><br />
     #
@@ -783,13 +783,14 @@ module ActionView
         end
       end
 
-      # Creates a scope around a specific model object like form_for, but
-      # doesn't create the form tags themselves. This makes fields_for suitable
-      # for specifying additional model objects in the same form.
+      # Creates a scope around a specific model object like form_with or
+      # form_for, but doesn't create the form tags themselves. This makes
+      # fields_for suitable for specifying additional model objects in the
+      # same form.
       #
-      # Although the usage and purpose of +fields_for+ is similar to +form_for+'s,
-      # its method signature is slightly different. Like +form_for+, it yields
-      # a FormBuilder object associated with a particular model object to a block,
+      # The usage and purpose of +fields_for+ is similar to +form_with+ or
+      # +form_for+. Like +form_with+ and +form_for+, it yields a FormBuilder
+      # object associated with a particular model object to a block,
       # and within the block allows methods to be called on the builder to
       # generate fields associated with the model object. Fields may reflect
       # a model object in two ways - how they are named (hence how submitted
@@ -799,7 +800,7 @@ module ActionView
       # both an object name (represented by either a symbol or string) and the
       # object itself can be passed to the method separately -
       #
-      #   <%= form_for @person do |person_form| %>
+      #   <%= form_with model: @person do |person_form| %>
       #     First name: <%= person_form.text_field :first_name %>
       #     Last name : <%= person_form.text_field :last_name %>
       #
@@ -880,7 +881,7 @@ module ActionView
       #
       # This model can now be used with a nested fields_for, like so:
       #
-      #   <%= form_for @person do |person_form| %>
+      #   <%= form_with model: @person do |person_form| %>
       #     ...
       #     <%= person_form.fields_for :address do |address_fields| %>
       #       Street  : <%= address_fields.text_field :street %>
@@ -910,7 +911,7 @@ module ActionView
       # with a value that evaluates to +true+, you will destroy the associated
       # model (e.g. 1, '1', true, or 'true'):
       #
-      #   <%= form_for @person do |person_form| %>
+      #   <%= form_with model: @person do |person_form| %>
       #     ...
       #     <%= person_form.fields_for :address do |address_fields| %>
       #       ...
@@ -951,7 +952,7 @@ module ActionView
       # the nested fields_for call will be repeated for each instance in the
       # collection:
       #
-      #   <%= form_for @person do |person_form| %>
+      #   <%= form_with model: @person do |person_form| %>
       #     ...
       #     <%= person_form.fields_for :projects do |project_fields| %>
       #       <% if project_fields.object.active? %>
@@ -963,7 +964,7 @@ module ActionView
       #
       # It's also possible to specify the instance to be used:
       #
-      #   <%= form_for @person do |person_form| %>
+      #   <%= form_with model: @person do |person_form| %>
       #     ...
       #     <% @person.projects.each do |project| %>
       #       <% if project.active? %>
@@ -977,7 +978,7 @@ module ActionView
       #
       # Or a collection to be used:
       #
-      #   <%= form_for @person do |person_form| %>
+      #   <%= form_with model: @person do |person_form| %>
       #     ...
       #     <%= person_form.fields_for :projects, @active_projects do |project_fields| %>
       #       Name: <%= project_fields.text_field :name %>
@@ -999,7 +1000,7 @@ module ActionView
       # parameter with a value that evaluates to +true+
       # (e.g. 1, '1', true, or 'true'):
       #
-      #   <%= form_for @person do |person_form| %>
+      #   <%= form_with model: @person do |person_form| %>
       #     ...
       #     <%= person_form.fields_for :projects do |project_fields| %>
       #       Delete: <%= project_fields.check_box :_destroy %>
@@ -1011,7 +1012,7 @@ module ActionView
       # object in the array. For this purpose, the <tt>index</tt> method is
       # available in the FormBuilder object.
       #
-      #   <%= form_for @person do |person_form| %>
+      #   <%= form_with model: @person do |person_form| %>
       #     ...
       #     <%= person_form.fields_for :projects do |project_fields| %>
       #       Project #<%= project_fields.index %>
@@ -1220,7 +1221,7 @@ module ActionView
       # hash with +options+. These options will be tagged onto the HTML as an HTML element attribute as in the example
       # shown.
       #
-      # Using this method inside a +form_for+ block will set the enclosing form's encoding to <tt>multipart/form-data</tt>.
+      # Using this method inside a +form_with+ or +form_for+ block will set the enclosing form's encoding to <tt>multipart/form-data</tt>.
       #
       # ==== Options
       # * Creates standard HTML attributes for the tag.
@@ -1629,10 +1630,10 @@ module ActionView
     #
     # A +FormBuilder+ object is associated with a particular model object and
     # allows you to generate fields associated with the model object. The
-    # +FormBuilder+ object is yielded when using +form_for+ or +fields_for+.
+    # +FormBuilder+ object is yielded when using +form_with+, +form_for+ or +fields_for+.
     # For example:
     #
-    #   <%= form_for @person do |person_form| %>
+    #   <%= form_with model: @person do |person_form| %>
     #     Name: <%= person_form.text_field :name %>
     #     Admin: <%= person_form.check_box :admin %>
     #   <% end %>
@@ -1738,7 +1739,7 @@ module ActionView
       #
       # return the <tt><form></tt> element's <tt>id</tt> attribute.
       #
-      #   <%= form_for @article do |f| %>
+      #   <%= form_with model: @article do |f| %>
       #     <%# ... %>
       #
       #     <% content_for :sticky_footer do %>
@@ -1760,7 +1761,7 @@ module ActionView
       # Return the value generated by the <tt>FormBuilder</tt> for the given
       # attribute name.
       #
-      #   <%= form_for @article do |f| %>
+      #   <%= form_with model: @article do |f| %>
       #     <%= f.label :title %>
       #     <%= f.text_field :title, aria: { describedby: f.field_id(:title, :error) } %>
       #     <%= tag.span("is blank", id: f.field_id(:title, :error) %>
@@ -1781,12 +1782,12 @@ module ActionView
       # Return the value generated by the <tt>FormBuilder</tt> for the given
       # attribute name.
       #
-      #   <%= form_for @article do |f| %>
+      #   <%= form_with model: @article do |f| %>
       #     <%= f.text_field :title, name: f.field_name(:title, :subtitle) %>
       #     <%# => <input type="text" name="article[title][subtitle]"> %>
       #   <% end %>
       #
-      #   <%= form_for @article do |f| %>
+      #   <%= form_with model: @article do |f| %>
       #     <%= f.text_field :tag, name: f.field_name(:tag, multiple: true) %>
       #     <%# => <input type="text" name="article[tag][]"> %>
       #   <% end %>
@@ -2038,9 +2039,9 @@ module ActionView
       # doesn't create the form tags themselves. This makes fields_for suitable
       # for specifying additional model objects in the same form.
       #
-      # Although the usage and purpose of +fields_for+ is similar to +form_for+'s,
-      # its method signature is slightly different. Like +form_for+, it yields
-      # a FormBuilder object associated with a particular model object to a block,
+      # The usage and purpose of +fields_for+ is similar to +form_with+ or
+      # +form_for+. Like +form_with+ and +form_for+, it yields a FormBuilder
+      # object associated with a particular model object to a block,
       # and within the block allows methods to be called on the builder to
       # generate fields associated with the model object. Fields may reflect
       # a model object in two ways - how they are named (hence how submitted
@@ -2050,7 +2051,7 @@ module ActionView
       # both an object name (represented by either a symbol or string) and the
       # object itself can be passed to the method separately -
       #
-      #   <%= form_for @person do |person_form| %>
+      #   <%= form_with model: @person do |person_form| %>
       #     First name: <%= person_form.text_field :first_name %>
       #     Last name : <%= person_form.text_field :last_name %>
       #
@@ -2099,7 +2100,7 @@ module ActionView
       # name and value parameters are provided and the provided value has the shape of an
       # option Hash. To remove the ambiguity, explicitly pass an option Hash, even if empty.
       #
-      #   <%= form_for @person do |person_form| %>
+      #   <%= form_with model: @person do |person_form| %>
       #     ...
       #     <%= fields_for :permission, @person.permission, {} do |permission_fields| %>
       #       Admin?: <%= check_box_tag permission_fields.field_name(:admin), @person.permission[:admin] %>
@@ -2143,7 +2144,7 @@ module ActionView
       #
       # This model can now be used with a nested fields_for, like so:
       #
-      #   <%= form_for @person do |person_form| %>
+      #   <%= form_with model: @person do |person_form| %>
       #     ...
       #     <%= person_form.fields_for :address do |address_fields| %>
       #       Street  : <%= address_fields.text_field :street %>
@@ -2173,7 +2174,7 @@ module ActionView
       # with a value that evaluates to +true+, you will destroy the associated
       # model (e.g. 1, '1', true, or 'true'):
       #
-      #   <%= form_for @person do |person_form| %>
+      #   <%= form_with model: @person do |person_form| %>
       #     ...
       #     <%= person_form.fields_for :address do |address_fields| %>
       #       ...
@@ -2214,7 +2215,7 @@ module ActionView
       # the nested fields_for call will be repeated for each instance in the
       # collection:
       #
-      #   <%= form_for @person do |person_form| %>
+      #   <%= form_with model: @person do |person_form| %>
       #     ...
       #     <%= person_form.fields_for :projects do |project_fields| %>
       #       <% if project_fields.object.active? %>
@@ -2226,7 +2227,7 @@ module ActionView
       #
       # It's also possible to specify the instance to be used:
       #
-      #   <%= form_for @person do |person_form| %>
+      #   <%= form_with model: @person do |person_form| %>
       #     ...
       #     <% @person.projects.each do |project| %>
       #       <% if project.active? %>
@@ -2240,7 +2241,7 @@ module ActionView
       #
       # Or a collection to be used:
       #
-      #   <%= form_for @person do |person_form| %>
+      #   <%= form_with model: @person do |person_form| %>
       #     ...
       #     <%= person_form.fields_for :projects, @active_projects do |project_fields| %>
       #       Name: <%= project_fields.text_field :name %>
@@ -2262,7 +2263,7 @@ module ActionView
       # parameter with a value that evaluates to +true+
       # (e.g. 1, '1', true, or 'true'):
       #
-      #   <%= form_for @person do |person_form| %>
+      #   <%= form_with model: @person do |person_form| %>
       #     ...
       #     <%= person_form.fields_for :projects do |project_fields| %>
       #       Delete: <%= project_fields.check_box :_destroy %>
@@ -2274,7 +2275,7 @@ module ActionView
       # object in the array. For this purpose, the <tt>index</tt> method
       # is available in the FormBuilder object.
       #
-      #   <%= form_for @person do |person_form| %>
+      #   <%= form_with model: @person do |person_form| %>
       #     ...
       #     <%= person_form.fields_for :projects do |project_fields| %>
       #       Project #<%= project_fields.index %>
@@ -2562,7 +2563,7 @@ module ActionView
       # Add the submit button for the given form. When no value is given, it checks
       # if the object is a new resource or not to create the proper label:
       #
-      #   <%= form_for @article do |f| %>
+      #   <%= form_with model: @article do |f| %>
       #     <%= f.submit %>
       #   <% end %>
       #
@@ -2595,7 +2596,7 @@ module ActionView
       # Add the submit button for the given form. When no value is given, it checks
       # if the object is a new resource or not to create the proper label:
       #
-      #   <%= form_for @article do |f| %>
+      #   <%= form_with model: @article do |f| %>
       #     <%= f.button %>
       #   <% end %>
       # In the example above, if <tt>@article</tt> is a new record, it will use "Create Article" as
