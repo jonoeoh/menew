@@ -261,6 +261,50 @@ module ActiveSupport
         retval
       end
 
+      # Assertion that an active model doesn't have an error on a field
+      #
+      # assert_no_error :name, :blank, :user
+      def assert_no_error(attribute, type, obj, msg = nil)
+        raise ArgumentError.new("#{obj.inspect} does not respond to #errors") unless obj.respond_to?(:errors)
+        msg = message(msg) {
+          data = [attribute, type]
+          "Expected %s to not be %s" % data
+        }
+        assert_not(obj.errors.added?(attribute, type), msg)
+      end
+
+      # Assertion that an active model has a specific error on a field
+      #
+      # assert_error :name, :blank, :user
+      def assert_error(attribute, type, obj, msg = nil)
+        raise ArgumentError.new("#{obj.inspect} does not respond to #errors") unless obj.respond_to?(:errors)
+        msg = message(msg) {
+          data = [type, attribute]
+          "Expected error %s on %s" % data
+        }
+        assert(obj.errors.added?(attribute, type), msg)
+      end
+
+      # Assertion that an active model's attribute is not valid after validation
+      #
+      # assert_not_valid :name, :blank, :user
+      def assert_not_valid(attribute, type, obj, msg = nil)
+        raise ArgumentError.new("#{obj.inspect} does not respond to #validate") unless obj.respond_to?(:validate)
+
+        obj.validate
+        assert_error(attribute, type, obj, msg)
+      end
+
+      # Assertion that an active model's attribute is valid after validation
+      #
+      # assert_valid :name, :blank, :user
+      def assert_valid(attribute, type, obj, msg = nil)
+        raise ArgumentError.new("#{obj.inspect} does not respond to #validate") unless obj.respond_to?(:validate)
+
+        obj.validate
+        assert_no_error(attribute, type, obj, msg)
+      end
+
       private
         def _assert_nothing_raised_or_warn(assertion, &block)
           assert_nothing_raised(&block)
