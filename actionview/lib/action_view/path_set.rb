@@ -43,7 +43,15 @@ module ActionView # :nodoc:
     end
 
     def find_all(path, prefixes, partial, details, details_key, locals)
-      search_combinations(*prefixes, path.pluralize) do |resolver, prefix|
+      paths = Set[Array(prefixes)]
+
+      Array(prefixes).each do |prefix|
+        paths << prefix
+        _, *rest = prefix.split("/")
+        paths << rest.join("/")
+      end
+
+      search_combinations(paths) do |resolver, prefix|
         templates = resolver.find_all(path, prefix, partial, details, details_key, locals)
         return templates unless templates.empty?
       end
@@ -55,8 +63,7 @@ module ActionView # :nodoc:
     end
 
     private
-      def search_combinations(*prefixes)
-        prefixes = Array(prefixes)
+      def search_combinations(prefixes)
         prefixes.each do |prefix|
           paths.each do |resolver|
             yield resolver, prefix

@@ -23,7 +23,19 @@ module Quiz
   end
 end
 
+module ActiveStorage
+  Attachment = Struct.new(:filename) do
+    extend ActiveModel::Naming
+    include ActiveModel::Conversion
+  end
+end
+
 module Fun
+  Article = Struct.new(:file) do
+    extend ActiveModel::Naming
+    include ActiveModel::Conversion
+  end
+
   class GamesController < ActionController::Base
     def hello_world; end
 
@@ -1080,6 +1092,18 @@ class RenderTest < ActionController::TestCase
 
     get :hello_world
     assert_equal "Hello: Rendered", @response.body
+  end
+
+  def test_rendering_with_multiple_namespaces
+    @controller = Fun::GamesController.new
+    def @controller.hello_world
+      file = ::ActiveStorage::Attachment.new("file.txt")
+      fun_article = ::Fun::Article.new(file)
+      render partial: fun_article
+    end
+
+    get :hello_world
+    assert_equal "Rendered attachment: file.txt", @response.body
   end
 
   def test_unnested_rendering_without_fallback
