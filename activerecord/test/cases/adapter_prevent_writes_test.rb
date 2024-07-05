@@ -10,7 +10,7 @@ require "models/event"
 module ActiveRecord
   class AdapterPreventWritesTest < ActiveRecord::TestCase
     def setup
-      @connection = ActiveRecord::Base.connection
+      @connection = ActiveRecord::Base.lease_connection
     end
 
     def test_preventing_writes_predicate
@@ -54,7 +54,7 @@ module ActiveRecord
     if current_adapter?(:PostgreSQLAdapter)
       def test_doesnt_error_when_a_select_query_has_encoding_errors
         ActiveRecord::Base.while_preventing_writes do
-          # Contrary to other adapters, Postgres will eagerly fail on encoding errors.
+          # Contrary to other adapters, PostgreSQL will eagerly fail on encoding errors.
           # But at least we can assert it fails in the client and not before when trying to
           # match the query.
           assert_raises ActiveRecord::StatementInvalid do
@@ -65,7 +65,9 @@ module ActiveRecord
     else
       def test_doesnt_error_when_a_select_query_has_encoding_errors
         ActiveRecord::Base.while_preventing_writes do
-          @connection.select_all("SELECT '\xC8'")
+          assert_nothing_raised do
+            @connection.select_all("SELECT '\xC8'")
+          end
         end
       end
     end
@@ -79,7 +81,7 @@ module ActiveRecord
       end
     end
 
-    if ActiveRecord::Base.connection.supports_common_table_expressions?
+    if ActiveRecord::Base.lease_connection.supports_common_table_expressions?
       def test_doesnt_error_when_a_read_query_with_a_cte_is_called_while_preventing_writes
         @connection.insert("INSERT INTO subscribers(nick) VALUES ('138853948594')")
 
@@ -123,6 +125,16 @@ module ActiveRecord
       ActiveRecord::Base.while_preventing_writes do
         assert_raises(ActiveRecord::ReadOnlyError) do
           @connection.insert("-- some comment\nINSERT INTO subscribers(nick) VALUES ('138853948594')", nil, false)
+        end
+      end
+    end
+
+    def test_errors_when_an_insert_query_prefixed_by_a_multiline_double_dash_comment_is_called_while_preventing_writes
+      ActiveRecord::Base.while_preventing_writes do
+        assert_raises(ActiveRecord::ReadOnlyError) do
+          Timeout.timeout(0.1) do # should be fast to parse the query
+            @connection.insert("#{"-- comment\n" * 50}INSERT INTO subscribers(nick) VALUES ('138853948594')", nil, false)
+          end
         end
       end
     end

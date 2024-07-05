@@ -43,6 +43,10 @@ module Rails
           type, attr_options = *parse_type_and_options(type)
           type = type.to_sym if type
 
+          if dangerous_name?(name)
+            raise Error, "Could not generate field '#{name}', as it is already defined by Active Record."
+          end
+
           if type && !valid_type?(type)
             raise Error, "Could not generate field '#{name}' with unknown type '#{type}'."
           end
@@ -60,9 +64,15 @@ module Rails
           new(name, type, index_type, attr_options)
         end
 
+        def dangerous_name?(name)
+          defined?(ActiveRecord::Base) &&
+            ActiveRecord::Base.dangerous_attribute_method?(name)
+        end
+
         def valid_type?(type)
           DEFAULT_TYPES.include?(type.to_s) ||
-            ActiveRecord::Base.connection.valid_type?(type)
+            !defined?(ActiveRecord::Base) ||
+            ActiveRecord::Base.lease_connection.valid_type?(type)
         end
 
         def valid_index_type?(index_type)
@@ -78,6 +88,8 @@ module Rails
           # when declaring options curly brackets should be used
           def parse_type_and_options(type)
             case type
+            when /(text|binary)\{([a-z]+)\}/
+              return $1, size: $2.to_sym
             when /(string|text|binary|integer)\{(\d+)\}/
               return $1, limit: $2.to_i
             when /decimal\{(\d+)[,.-](\d+)\}/
@@ -227,6 +239,31 @@ module Rails
           end
         end
       end
+
+      def to_s
+        if has_uniq_index?
+          "#{name}:#{type}#{print_attribute_options}:uniq"
+        elsif has_index?
+          "#{name}:#{type}#{print_attribute_options}:index"
+        else
+          "#{name}:#{type}#{print_attribute_options}"
+        end
+      end
+
+      private
+        def print_attribute_options
+          if attr_options.empty?
+            ""
+          elsif attr_options[:size]
+            "{#{attr_options[:size]}}"
+          elsif attr_options[:limit]
+            "{#{attr_options[:limit]}}"
+          elsif attr_options[:precision] && attr_options[:scale]
+            "{#{attr_options[:precision]},#{attr_options[:scale]}}"
+          else
+            "{#{attr_options.keys.join(",")}}"
+          end
+        end
     end
   end
 end

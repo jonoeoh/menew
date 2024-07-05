@@ -3,8 +3,6 @@
 module ActiveRecord
   module Tasks # :nodoc:
     class SQLiteDatabaseTasks # :nodoc:
-      delegate :connection, :establish_connection, to: ActiveRecord::Base
-
       def self.using_database_configurations?
         true
       end
@@ -17,25 +15,26 @@ module ActiveRecord
       def create
         raise DatabaseAlreadyExists if File.exist?(db_config.database)
 
-        establish_connection(db_config)
+        establish_connection
         connection
       end
 
       def drop
-        require "pathname"
-        path = Pathname.new(db_config.database)
-        file = path.absolute? ? path.to_s : File.join(root, path)
-
+        db_path = db_config.database
+        file = File.absolute_path?(db_path) ? db_path : File.join(root, db_path)
         FileUtils.rm(file)
+        FileUtils.rm_f(["#{file}-shm", "#{file}-wal"])
       rescue Errno::ENOENT => error
         raise NoDatabaseError.new(error.message)
       end
 
       def purge
+        connection.disconnect!
         drop
       rescue NoDatabaseError
       ensure
         create
+        connection.reconnect!
       end
 
       def charset
@@ -65,6 +64,15 @@ module ActiveRecord
 
       private
         attr_reader :db_config, :root
+
+        def connection
+          ActiveRecord::Base.lease_connection
+        end
+
+        def establish_connection(config = db_config)
+          ActiveRecord::Base.establish_connection(config)
+          connection.connect!
+        end
 
         def run_cmd(cmd, args, out)
           fail run_cmd_error(cmd, args) unless Kernel.system(cmd, *args, out: out)

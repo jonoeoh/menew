@@ -1,3 +1,5 @@
+*   Only sanitize `content` attribute when present in attachments.
 
+    *Petrik de Heus*
 
-Please check [7-0-stable](https://github.com/rails/rails/blob/7-0-stable/actiontext/CHANGELOG.md) for previous changes.
+Please check [7-2-stable](https://github.com/rails/rails/blob/7-2-stable/actiontext/CHANGELOG.md) for previous changes.

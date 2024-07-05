@@ -5,19 +5,23 @@ require "active_support/core_ext/module"
 
 Somewhere = Struct.new(:street, :city) do
   attr_accessor :name
+
+  def self.country
+    yield
+  end
 end
 
 Someone = Struct.new(:name, :place) do
+  def self.table_name
+    "some_table"
+  end
+
   delegate :street, :city, :to_f, to: :place
   delegate :name=, to: :place, prefix: true
   delegate :upcase, to: "place.city"
   delegate :table_name, to: :class
   delegate :table_name, to: :class, prefix: true
-
-  def self.table_name
-    "some_table"
-  end
-
+  delegate :country, to: Somewhere
   self::FAILED_DELEGATE_LINE = __LINE__ + 1
   delegate :foo, to: :place
 
@@ -72,7 +76,7 @@ Product = Struct.new(:name) do
 end
 
 module ExtraMissing
-  def method_missing(sym, *args)
+  def method_missing(sym, ...)
     if sym == :extra_missing
       42
     else
@@ -171,6 +175,28 @@ class SideEffect
 end
 
 class ModuleTest < ActiveSupport::TestCase
+  class ArityTester
+    class << self
+      def zero; end
+      def zero_with_block(&bl); end
+      def zero_with_implicit_block; yield end
+      def one(a) end
+      def one_with_block(a) end
+      def two(a, b) end
+      def opt(a, b, c, d = nil) end
+      def kwargs(a:, b:) end
+      def kwargs_with_block(a:, b:, c:, &block) end
+      def opt_kwargs(a:, b: 3) end
+      def opt_kwargs_with_block(a:, b:, c:, d: "", &block) end
+    end
+  end
+
+  module ArityTesterModule
+    class << self
+      def zero; end
+    end
+  end
+
   def setup
     @david = Someone.new("David", Somewhere.new("Paulina", "Chicago"))
   end
@@ -261,6 +287,12 @@ class ModuleTest < ActiveSupport::TestCase
         end
         delegate :name, :address, to: :@client, prefix: true
       end
+    end
+  end
+
+  def test_delegation_with_implicit_block
+    assert_nothing_raised do
+      @david.country {  }
     end
   end
 
@@ -394,7 +426,7 @@ class ModuleTest < ActiveSupport::TestCase
       DecoratedReserved.new(@david).private_name
     end
 
-    assert_match(/undefined method `private_name' for/, e.message)
+    assert_match(/undefined method [`']private_name' for/, e.message)
   end
 
   def test_delegate_missing_to_does_not_delegate_to_fake_methods
@@ -402,7 +434,7 @@ class ModuleTest < ActiveSupport::TestCase
       DecoratedReserved.new(@david).my_fake_method
     end
 
-    assert_match(/undefined method `my_fake_method' for/, e.message)
+    assert_match(/undefined method [`']my_fake_method' for/, e.message)
   end
 
   def test_delegate_missing_to_raises_delegation_error_if_target_nil
@@ -552,5 +584,82 @@ class ModuleTest < ActiveSupport::TestCase
 
     assert_equal [:the_street, :the_city],
       location.delegate(:street, :city, to: :@place, prefix: :the, private: true)
+  end
+
+  def test_module_nesting_is_empty
+    # Ensure constant resolution is done from top level namespace and not ActiveSupport
+    require "json"
+    c = Class.new do
+      singleton_class.delegate :parse, to: ::JSON
+    end
+    assert_equal [1], c.parse("[1]")
+  end
+
+  def test_delegation_unreacheable_module
+    anonymous_class = Class.new
+    error = assert_raises ArgumentError do
+      Class.new do
+        delegate :something, to: anonymous_class
+      end
+    end
+    assert_includes error.message, "Can't delegate to anonymous class or module"
+
+    anonymous_class.singleton_class.define_method(:name) { "FakeName" }
+    error = assert_raises ArgumentError do
+      Class.new do
+        delegate :something, to: anonymous_class
+      end
+    end
+    assert_includes error.message, "Can't delegate to detached class or module: FakeName"
+  end
+
+  def test_delegation_arity_to_module
+    c = Class.new do
+      delegate :zero, :one, :two, to: ArityTester
+    end
+    assert_equal 0, c.instance_method(:zero).arity
+    assert_equal 1, c.instance_method(:one).arity
+    assert_equal 2, c.instance_method(:two).arity
+
+    e = Class.new do
+      delegate :zero, to: ArityTesterModule
+    end
+
+    assert_equal 0, e.instance_method(:zero).arity
+    assert_nothing_raised do
+      e.new.zero
+    end
+  end
+
+  def test_delegation_arity_to_self_class
+    d = Class.new(ArityTester) do
+      delegate :zero, :zero_with_block, :zero_with_implicit_block, :one, :one_with_block, :two, :opt,
+        :kwargs, :kwargs_with_block, :opt_kwargs, :opt_kwargs_with_block, to: :class
+    end
+
+    assert_equal 0, d.instance_method(:zero).arity
+    assert_equal 0, d.instance_method(:zero_with_block).arity
+    assert_equal 0, d.instance_method(:zero_with_implicit_block).arity
+    assert_equal 1, d.instance_method(:one).arity
+    assert_equal 1, d.instance_method(:one_with_block).arity
+    assert_equal 2, d.instance_method(:two).arity
+    assert_equal(-1, d.instance_method(:opt).arity)
+    assert_equal(-1, d.instance_method(:kwargs).arity)
+    assert_equal(-1, d.instance_method(:kwargs_with_block).arity)
+    assert_equal(-1, d.instance_method(:opt_kwargs).arity)
+    assert_equal(-1, d.instance_method(:opt_kwargs_with_block).arity)
+    assert_nothing_raised do
+      d.new.zero
+      d.new.zero_with_block
+      d.new.zero_with_implicit_block { }
+      d.new.one(1)
+      d.new.one_with_block(1)
+      d.new.two(1, 2)
+      d.new.opt(1, 2, 3)
+      d.new.kwargs(a: 1, b: 2)
+      d.new.kwargs_with_block(a: 1, b: 2, c: 3)
+      d.new.opt_kwargs(a: 1)
+      d.new.opt_kwargs_with_block(a: 1, b: 2, c: 3)
+    end
   end
 end

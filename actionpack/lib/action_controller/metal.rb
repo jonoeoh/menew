@@ -1,15 +1,19 @@
 # frozen_string_literal: true
 
+# :markup: markdown
+
 require "active_support/core_ext/array/extract_options"
 require "action_dispatch/middleware/stack"
 
 module ActionController
-  # Extend ActionDispatch middleware stack to make it aware of options
-  # allowing the following syntax in controllers:
+  # # Action Controller MiddlewareStack
   #
-  #   class PostsController < ApplicationController
-  #     use AuthenticationMiddleware, except: [:index, :show]
-  #   end
+  # Extend ActionDispatch middleware stack to make it aware of options allowing
+  # the following syntax in controllers:
+  #
+  #     class PostsController < ApplicationController
+  #       use AuthenticationMiddleware, except: [:index, :show]
+  #     end
   #
   class MiddlewareStack < ActionDispatch::MiddlewareStack # :nodoc:
     class Middleware < ActionDispatch::MiddlewareStack::Middleware # :nodoc:
@@ -58,71 +62,71 @@ module ActionController
       end
   end
 
-  # <tt>ActionController::Metal</tt> is the simplest possible controller, providing a
+  # # Action Controller Metal
+  #
+  # `ActionController::Metal` is the simplest possible controller, providing a
   # valid Rack interface without the additional niceties provided by
   # ActionController::Base.
   #
   # A sample metal controller might look like this:
   #
-  #   class HelloController < ActionController::Metal
-  #     def index
-  #       self.response_body = "Hello World!"
+  #     class HelloController < ActionController::Metal
+  #       def index
+  #         self.response_body = "Hello World!"
+  #       end
   #     end
-  #   end
   #
-  # And then to route requests to your metal controller, you would add
-  # something like this to <tt>config/routes.rb</tt>:
+  # And then to route requests to your metal controller, you would add something
+  # like this to `config/routes.rb`:
   #
-  #   get 'hello', to: HelloController.action(:index)
+  #     get 'hello', to: HelloController.action(:index)
   #
-  # The +action+ method returns a valid Rack application for the \Rails
-  # router to dispatch to.
+  # The `action` method returns a valid Rack application for the Rails router to
+  # dispatch to.
   #
-  # == Rendering Helpers
+  # ## Rendering Helpers
   #
-  # <tt>ActionController::Metal</tt> by default provides no utilities for rendering
+  # `ActionController::Metal` by default provides no utilities for rendering
   # views, partials, or other responses aside from explicitly calling of
-  # <tt>response_body=</tt>, <tt>content_type=</tt>, and <tt>status=</tt>. To
-  # add the render helpers you're used to having in a normal controller, you
-  # can do the following:
+  # `response_body=`, `content_type=`, and `status=`. To add the render helpers
+  # you're used to having in a normal controller, you can do the following:
   #
-  #   class HelloController < ActionController::Metal
-  #     include AbstractController::Rendering
-  #     include ActionView::Layouts
-  #     append_view_path "#{Rails.root}/app/views"
+  #     class HelloController < ActionController::Metal
+  #       include AbstractController::Rendering
+  #       include ActionView::Layouts
+  #       append_view_path "#{Rails.root}/app/views"
   #
-  #     def index
-  #       render "hello/index"
+  #       def index
+  #         render "hello/index"
+  #       end
   #     end
-  #   end
   #
-  # == Redirection Helpers
+  # ## Redirection Helpers
   #
   # To add redirection helpers to your metal controller, do the following:
   #
-  #   class HelloController < ActionController::Metal
-  #     include ActionController::Redirecting
-  #     include Rails.application.routes.url_helpers
+  #     class HelloController < ActionController::Metal
+  #       include ActionController::Redirecting
+  #       include Rails.application.routes.url_helpers
   #
-  #     def index
-  #       redirect_to root_url
+  #       def index
+  #         redirect_to root_url
+  #       end
   #     end
-  #   end
   #
-  # == Other Helpers
+  # ## Other Helpers
   #
-  # You can refer to the modules included in ActionController::Base to see
-  # other features you can bring into your metal controller.
-  #
+  # You can refer to the modules included in ActionController::Base to see other
+  # features you can bring into your metal controller.
   class Metal < AbstractController::Base
     abstract!
 
-    # Returns the last part of the controller's name, underscored, without the ending
-    # <tt>Controller</tt>. For instance, PostsController returns <tt>posts</tt>.
-    # Namespaces are left out, so Admin::PostsController returns <tt>posts</tt> as well.
+    # Returns the last part of the controller's name, underscored, without the
+    # ending `Controller`. For instance, `PostsController` returns `posts`.
+    # Namespaces are left out, so `Admin::PostsController` returns `posts` as well.
     #
-    # ==== Returns
-    # * <tt>string</tt>
+    # #### Returns
+    # *   `string`
     def self.controller_name
       @controller_name ||= (name.demodulize.delete_suffix("Controller").underscore unless anonymous?)
     end
@@ -137,20 +141,53 @@ module ActionController
       false
     end
 
+    class << self
+      private
+        def inherited(subclass)
+          super
+          subclass.middleware_stack = middleware_stack.dup
+          subclass.class_eval do
+            @controller_name = nil
+          end
+        end
+    end
+
     # Delegates to the class's ::controller_name.
     def controller_name
       self.class.controller_name
     end
 
-    attr_internal :response, :request
+    ##
+    # :attr_reader: request
+    #
+    # The ActionDispatch::Request instance for the current request.
+    attr_internal :request
+
+    ##
+    # :attr_reader: response
+    #
+    # The ActionDispatch::Response instance for the current response.
+    attr_internal_reader :response
+
+    ##
+    # The ActionDispatch::Request::Session instance for the current request.
+    # See further details in the
+    # [Active Controller Session guide](https://guides.rubyonrails.org/action_controller_overview.html#session).
     delegate :session, to: "@_request"
-    delegate :headers, :status=, :location=, :content_type=,
+
+    ##
+    # Delegates to ActionDispatch::Response#headers.
+    delegate :headers, to: "@_response"
+
+    delegate :status=, :location=, :content_type=,
              :status, :location, :content_type, :media_type, to: "@_response"
 
     def initialize
       @_request = nil
       @_response = nil
+      @_response_body = nil
       @_routes = nil
+      @_params = nil
       super
     end
 
@@ -170,11 +207,13 @@ module ActionController
     end
 
     def response_body=(body)
-      body = [body] unless body.nil? || body.respond_to?(:each)
-      response.reset_body!
-      return unless body
-      response.body = body
-      super
+      if body
+        body = [body] if body.is_a?(String)
+        response.body = body
+        super
+      else
+        response.reset_body!
+      end
     end
 
     # Tests if render or redirect has already happened.
@@ -191,7 +230,21 @@ module ActionController
     end
 
     def set_response!(response) # :nodoc:
+      if @_response
+        _, _, body = @_response
+        body.close if body.respond_to?(:close)
+      end
+
       @_response = response
+    end
+
+    # Assign the response and mark it as committed. No further processing will
+    # occur.
+    def response=(response)
+      set_response!(response)
+
+      # Force `performed?` to return true:
+      @_response_body = true
     end
 
     def set_request!(request) # :nodoc:
@@ -209,11 +262,6 @@ module ActionController
 
     class_attribute :middleware_stack, default: ActionController::MiddlewareStack.new
 
-    def self.inherited(base) # :nodoc:
-      base.middleware_stack = middleware_stack.dup
-      super
-    end
-
     class << self
       # Pushes the given Rack middleware and its arguments to the bottom of the
       # middleware stack.
@@ -222,7 +270,18 @@ module ActionController
       end
     end
 
-    # Alias for +middleware_stack+.
+    # The middleware stack used by this controller.
+    #
+    # By default uses a variation of ActionDispatch::MiddlewareStack which allows
+    # for the following syntax:
+    #
+    #     class PostsController < ApplicationController
+    #       use AuthenticationMiddleware, except: [:index, :show]
+    #     end
+    #
+    # Read more about [Rails middleware stack]
+    # (https://guides.rubyonrails.org/rails_on_rack.html#action-dispatcher-middleware-stack)
+    # in the guides.
     def self.middleware
       middleware_stack
     end
@@ -242,8 +301,8 @@ module ActionController
       end
     end
 
-    # Direct dispatch to the controller. Instantiates the controller, then
-    # executes the action named +name+.
+    # Direct dispatch to the controller. Instantiates the controller, then executes
+    # the action named `name`.
     def self.dispatch(name, req, res)
       if middleware_stack.any?
         middleware_stack.build(name) { |env| new.dispatch(name, req, res) }.call req.env

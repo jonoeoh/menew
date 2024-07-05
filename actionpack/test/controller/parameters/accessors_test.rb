@@ -55,7 +55,7 @@ class ParametersAccessorsTest < ActiveSupport::TestCase
 
   test "each carries permitted status" do
     @params.permit!
-    @params.each { |key, value| assert(value.permitted?) if key == "person" }
+    @params.each { |key, value| assert_predicate(value, :permitted?) if key == "person" }
   end
 
   test "each carries unpermitted status" do
@@ -77,7 +77,7 @@ class ParametersAccessorsTest < ActiveSupport::TestCase
 
   test "each_pair carries permitted status" do
     @params.permit!
-    @params.each_pair { |key, value| assert(value.permitted?) if key == "person" }
+    @params.each_pair { |key, value| assert_predicate(value, :permitted?) if key == "person" }
   end
 
   test "each_pair carries unpermitted status" do
@@ -95,22 +95,6 @@ class ParametersAccessorsTest < ActiveSupport::TestCase
   test "each_pair without a block returns an enumerator" do
     assert_kind_of Enumerator, @params.each_pair
     assert_equal @params, ActionController::Parameters.new(@params.each_pair.to_h)
-  end
-
-  test "deprecated comparison works" do
-    assert_kind_of Enumerator, @params.each_pair
-    assert_deprecated do
-      assert_equal @params, @params.each_pair.to_h
-    end
-  end
-
-  test "deprecated comparison disabled" do
-    without_deprecated_params_hash_equality do
-      assert_kind_of Enumerator, @params.each_pair
-      assert_not_deprecated do
-        assert_not_equal @params, @params.each_pair.to_h
-      end
-    end
   end
 
   test "each_value carries permitted status" do
@@ -163,6 +147,25 @@ class ParametersAccessorsTest < ActiveSupport::TestCase
   test "except retains unpermitted status" do
     assert_not_predicate @params.except(:person), :permitted?
     assert_not_predicate @params[:person].except(:name), :permitted?
+  end
+
+  test "without retains permitted status" do
+    @params.permit!
+    assert_predicate @params.without(:person), :permitted?
+    assert_predicate @params[:person].without(:name), :permitted?
+  end
+
+  test "without retains unpermitted status" do
+    assert_not_predicate @params.without(:person), :permitted?
+    assert_not_predicate @params[:person].without(:name), :permitted?
+  end
+
+  test "exclude? returns true if the given key is not present in the params" do
+    assert @params.exclude?(:address)
+  end
+
+  test "exclude? returns false if the given key is present in the params" do
+    assert_not @params.exclude?(:person)
   end
 
   test "fetch retains permitted status" do
@@ -419,27 +422,16 @@ class ParametersAccessorsTest < ActiveSupport::TestCase
     assert_equal "Boston", @params.dig(:person, :addresses, 0, :city)
   end
 
-  test "has_value? converts hashes to parameters" do
-    assert_not_deprecated do
-      params = ActionController::Parameters.new(foo: { bar: "baz" })
-      assert params.has_value?("bar" => "baz")
-      params[:foo] # converts value to AC::Params
-      assert params.has_value?("bar" => "baz")
-    end
-  end
+  test "#extract_value splits param by delimiter" do
+    params = ActionController::Parameters.new(
+      id: "1_123",
+      tags: "ruby,rails,web",
+      blank_tags: ",ruby,,rails,"
+    )
 
-  test "has_value? works with parameters" do
-    without_deprecated_params_hash_equality do
-      params = ActionController::Parameters.new(foo: { bar: "baz" })
-      assert params.has_value?(ActionController::Parameters.new("bar" => "baz"))
-    end
+    assert_equal(["1", "123"], params.extract_value(:id))
+    assert_equal(["ruby", "rails", "web"], params.extract_value(:tags, delimiter: ","))
+    assert_equal(["", "ruby", "", "rails", ""], params.extract_value(:blank_tags, delimiter: ","))
+    assert_nil(params.extract_value(:non_existent_key))
   end
-
-  private
-    def without_deprecated_params_hash_equality
-      ActionController::Parameters.allow_deprecated_parameters_hash_equality = false
-      yield
-    ensure
-      ActionController::Parameters.allow_deprecated_parameters_hash_equality = true
-    end
 end

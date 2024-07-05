@@ -401,7 +401,7 @@ class ActionsTest < Rails::Generators::TestCase
 
   def test_initializer_should_write_date_to_file_in_config_initializers
     action :initializer, "constants.rb", "MY_CONSTANT = 42"
-    assert_file "config/initializers/constants.rb", "MY_CONSTANT = 42\n"
+    assert_initializer "constants.rb", "MY_CONSTANT = 42\n"
   end
 
   def test_initializer_should_write_date_to_file_with_block_in_config_initializers
@@ -411,7 +411,9 @@ class ActionsTest < Rails::Generators::TestCase
       end
     RUBY
     action(:initializer, "constants.rb") { code }
-    assert_file "config/initializers/constants.rb", code.strip_heredoc
+    assert_initializer "constants.rb" do |content|
+      assert_equal(content, code.strip_heredoc)
+    end
   end
 
   test "generate" do
@@ -720,7 +722,11 @@ class ActionsTest < Rails::Generators::TestCase
 
   private
     def action(...)
-      capture(:stdout) { generator.send(...) }
+      if ENV["RAILS_LOG_TO_STDOUT"] == "true"
+        generator.send(...)
+      else
+        capture(:stdout) { generator.send(...) }
+      end
     end
 
     def revoke(...)
@@ -734,15 +740,19 @@ class ActionsTest < Rails::Generators::TestCase
       config_matcher = ->(actual_config) do
         assert_equal config, actual_config.slice(*config.keys)
       end if config
-      args = Array(commands).map do |command|
+
+      mock = Minitest::Mock.new
+
+      Array(commands).each do |command|
         command_matcher = Regexp.escape(command)
         command_matcher = command_matcher.sub(/^sudo\\ /, '\A\1.*')
-        [/#{command_matcher}\z/, *config_matcher]
+        args = [/#{command_matcher}\z/, *config_matcher]
+        mock.expect(:call, nil, args)
       end
 
-      assert_called_with(generator, :run, args) do
-        block.call
-      end
+      generator.stub(:run, mock, &block)
+
+      assert_mock(mock)
     end
 
     def assert_routes(*route_commands)

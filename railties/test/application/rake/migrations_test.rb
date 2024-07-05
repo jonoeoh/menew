@@ -8,6 +8,7 @@ module ApplicationTests
       def setup
         build_app
         FileUtils.rm_rf("#{app_path}/config/environments")
+        add_to_config("config.active_record.timestamped_migrations = false")
       end
 
       def teardown
@@ -17,7 +18,7 @@ module ApplicationTests
       test "running migrations with given scope" do
         rails "generate", "model", "user", "username:string", "password:string"
 
-        app_file "db/migrate/01_a_migration.bukkits.rb", <<-MIGRATION
+        app_file "db/migrate/02_a_migration.bukkits.rb", <<-MIGRATION
           class AMigration < ActiveRecord::Migration::Current
           end
         MIGRATION
@@ -200,6 +201,8 @@ module ApplicationTests
       end
 
       test "migration status" do
+        remove_from_config("config.active_record.timestamped_migrations = false")
+
         rails "generate", "model", "user", "username:string", "password:string"
         rails "generate", "migration", "add_email_to_users", "email:string"
         rails "db:migrate"
@@ -217,7 +220,7 @@ module ApplicationTests
       end
 
       test "migration status without timestamps" do
-        add_to_config("config.active_record.timestamped_migrations = false")
+        remove_from_config("config.active_record.timestamped_migrations = false")
 
         rails "generate", "model", "user", "username:string", "password:string"
         rails "generate", "migration", "add_email_to_users", "email:string"
@@ -236,6 +239,8 @@ module ApplicationTests
       end
 
       test "migration status after rollback and redo" do
+        remove_from_config("config.active_record.timestamped_migrations = false")
+
         rails "generate", "model", "user", "username:string", "password:string"
         rails "generate", "migration", "add_email_to_users", "email:string"
         rails "db:migrate"
@@ -259,6 +264,8 @@ module ApplicationTests
       end
 
       test "migration status after rollback and forward" do
+        remove_from_config("config.active_record.timestamped_migrations = false")
+
         rails "generate", "model", "user", "username:string", "password:string"
         rails "generate", "migration", "add_email_to_users", "email:string"
         rails "db:migrate"
@@ -283,6 +290,8 @@ module ApplicationTests
 
       test "raise error on any move when current migration does not exist" do
         Dir.chdir(app_path) do
+          remove_from_config("config.active_record.timestamped_migrations = false")
+
           rails "generate", "model", "user", "username:string", "password:string"
           rails "generate", "migration", "add_email_to_users", "email:string"
           rails "db:migrate"
@@ -382,8 +391,6 @@ module ApplicationTests
       end
 
       test "migration status after rollback and redo without timestamps" do
-        add_to_config("config.active_record.timestamped_migrations = false")
-
         rails "generate", "model", "user", "username:string", "password:string"
         rails "generate", "migration", "add_email_to_users", "email:string"
         rails "db:migrate"
@@ -497,6 +504,8 @@ module ApplicationTests
 
       test "migration status migrated file is deleted" do
         Dir.chdir(app_path) do
+          remove_from_config("config.active_record.timestamped_migrations = false")
+
           rails "generate", "model", "user", "username:string", "password:string"
           rails "generate", "migration", "add_email_to_users", "email:string"
           rails "db:migrate"
@@ -506,6 +515,35 @@ module ApplicationTests
 
           assert_match(/up\s+\d{14}\s+Create users/, output)
           assert_match(/up\s+\d{14}\s+\** NO FILE \**/, output)
+        end
+      end
+
+      test "migrations with execute run when connections are established from a loaded model" do
+        Dir.chdir(app_path) do
+          app_file "app/models/application_record.rb", <<-RUBY
+            class ApplicationRecord < ActiveRecord::Base
+              primary_abstract_class
+
+              establish_connection :primary
+            end
+          RUBY
+
+          rails "generate", "model", "user", "username:string", "password:string"
+
+          rails("db:migrate")
+
+          app_file "db/migrate/02_a_migration.bukkits.rb", <<-MIGRATION
+            class AMigration < ActiveRecord::Migration::Current
+              def change
+                User.first
+                execute("SELECT 1")
+              end
+            end
+          MIGRATION
+
+          output = rails("db:migrate")
+
+          assert_match(/execute\("SELECT 1"\)/, output)
         end
       end
     end

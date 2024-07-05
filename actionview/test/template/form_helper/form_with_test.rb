@@ -156,36 +156,36 @@ class FormWithActsLikeFormTagTest < FormWithTest
   end
 
   def test_form_with_with_block_in_erb
-    output_buffer = render_erb("<%= form_with(url: 'http://www.example.com') do %>Hello world!<% end %>")
+    @rendered = render_erb("<%= form_with(url: 'http://www.example.com') do %>Hello world!<% end %>")
 
     expected = whole_form { "Hello world!" }
-    assert_dom_equal expected, output_buffer
+    assert_dom_equal expected, @rendered
   end
 
   def test_form_with_with_block_and_method_in_erb
-    output_buffer = render_erb("<%= form_with(url: 'http://www.example.com', method: :put) do %>Hello world!<% end %>")
+    @rendered = render_erb("<%= form_with(url: 'http://www.example.com', method: :put) do %>Hello world!<% end %>")
 
     expected = whole_form("http://www.example.com", method: "put") do
       "Hello world!"
     end
 
-    assert_dom_equal expected, output_buffer
+    assert_dom_equal expected, @rendered
   end
 
   def test_form_with_with_block_in_erb_and_local_true
-    output_buffer = render_erb("<%= form_with(url: 'http://www.example.com', local: true) do %>Hello world!<% end %>")
+    @rendered = render_erb("<%= form_with(url: 'http://www.example.com', local: true) do %>Hello world!<% end %>")
 
     expected = whole_form("http://www.example.com", local: true) do
       "Hello world!"
     end
 
-    assert_dom_equal expected, output_buffer
+    assert_dom_equal expected, @rendered
   end
 end
 
 class FormWithActsLikeFormForTest < FormWithTest
   def form_with(*, **)
-    @output_buffer = super
+    @rendered = super
   end
 
   teardown do
@@ -339,18 +339,11 @@ class FormWithActsLikeFormForTest < FormWithTest
     super
   end
 
-  def test_form_with_requires_arguments
-    error = assert_raises(ArgumentError) do
-      form_for(nil, html: { id: "create-post" }) do
+  def test_form_with_when_given_nil_model_argument
+    assert_deprecated(ActionView.deprecator) do
+      form_with(model: nil) do
       end
     end
-    assert_equal "First argument in form cannot contain nil or be empty", error.message
-
-    error = assert_raises(ArgumentError) do
-      form_for([nil, nil], html: { id: "create-post" }) do
-      end
-    end
-    assert_equal "First argument in form cannot contain nil or be empty", error.message
   end
 
   def test_form_with
@@ -379,7 +372,7 @@ class FormWithActsLikeFormForTest < FormWithTest
       "<button name='button' type='submit'><span>Create post</span></button>"
     end
 
-    assert_dom_equal expected, output_buffer
+    assert_dom_equal expected, @rendered
   end
 
   def test_form_with_with_persisted_to_model
@@ -387,9 +380,9 @@ class FormWithActsLikeFormForTest < FormWithTest
 
     form_with(model: post_form) { }
 
-    expected = whole_form("/posts/123", method: :post) { "" }
+    expected = whole_form("/posts/123", method: :patch) { "" }
 
-    assert_dom_equal expected, output_buffer
+    assert_dom_equal expected, @rendered
   end
 
   def test_form_with_with_new_record_to_model
@@ -399,7 +392,7 @@ class FormWithActsLikeFormForTest < FormWithTest
 
     expected = whole_form("/posts", method: :post) { "" }
 
-    assert_dom_equal expected, output_buffer
+    assert_dom_equal expected, @rendered
   end
 
   def test_form_with_button_yields_translation
@@ -411,7 +404,7 @@ class FormWithActsLikeFormForTest < FormWithTest
       "<button name='button' type='submit'><span>Update Post</span></button>"
     end
 
-    assert_dom_equal expected, output_buffer
+    assert_dom_equal expected, @rendered
   end
 
   def test_form_with_not_outputting_ids
@@ -437,7 +430,7 @@ class FormWithActsLikeFormForTest < FormWithTest
       "<input name='commit' data-disable-with='Create post' type='submit' value='Create post' />"
     end
 
-    assert_dom_equal expected, output_buffer
+    assert_dom_equal expected, @rendered
   ensure
     ActionView::Helpers::FormHelper.form_with_generates_ids = old_value
   end
@@ -453,7 +446,7 @@ class FormWithActsLikeFormForTest < FormWithTest
       '<input type="text" name="title" id="title">'
     end
 
-    assert_dom_equal expected, output_buffer
+    assert_dom_equal expected, @rendered
   end
 
   def test_form_with_only_url_on_update
@@ -467,7 +460,7 @@ class FormWithActsLikeFormForTest < FormWithTest
       '<input type="text" name="title" id="title">'
     end
 
-    assert_dom_equal expected, output_buffer
+    assert_dom_equal expected, @rendered
   end
 
   def test_form_with_general_attributes
@@ -479,7 +472,7 @@ class FormWithActsLikeFormForTest < FormWithTest
       '<input type="text" name="no_model_to_back_this_badboy" id="no_model_to_back_this_badboy" >'
     end
 
-    assert_dom_equal expected, output_buffer
+    assert_dom_equal expected, @rendered
   end
 
   def test_form_with_false_url
@@ -487,7 +480,7 @@ class FormWithActsLikeFormForTest < FormWithTest
 
     expected = whole_form(false)
 
-    assert_dom_equal expected, output_buffer
+    assert_dom_equal expected, @rendered
   end
 
   def test_form_with_model_and_false_url
@@ -495,7 +488,7 @@ class FormWithActsLikeFormForTest < FormWithTest
 
     expected = whole_form(false)
 
-    assert_dom_equal expected, output_buffer
+    assert_dom_equal expected, @rendered
   end
 
   def test_form_with_attribute_not_on_model
@@ -507,7 +500,7 @@ class FormWithActsLikeFormForTest < FormWithTest
       '<input type="text" name="post[this_dont_exist_on_post]" id="post_this_dont_exist_on_post" >'
     end
 
-    assert_dom_equal expected, output_buffer
+    assert_dom_equal expected, @rendered
   end
 
   def test_form_with_doesnt_call_private_or_protected_properties_on_form_object_skipping_value
@@ -543,7 +536,7 @@ class FormWithActsLikeFormForTest < FormWithTest
       "</select>"
     end
 
-    assert_dom_equal expected, output_buffer
+    assert_dom_equal expected, @rendered
   end
 
   def test_form_with_with_collection_radio_buttons
@@ -561,7 +554,7 @@ class FormWithActsLikeFormForTest < FormWithTest
       "<label for='post_active_false'>false</label>"
     end
 
-    assert_dom_equal expected, output_buffer
+    assert_dom_equal expected, @rendered
   end
 
   def test_form_with_with_collection_radio_buttons_with_custom_builder_block
@@ -585,7 +578,7 @@ class FormWithActsLikeFormForTest < FormWithTest
       "false</label>"
     end
 
-    assert_dom_equal expected, output_buffer
+    assert_dom_equal expected, @rendered
   end
 
   def test_form_with_with_collection_radio_buttons_with_custom_builder_block_does_not_leak_the_template
@@ -612,7 +605,7 @@ class FormWithActsLikeFormForTest < FormWithTest
       "<input name='post[id]' type='hidden' value='1' id='post_id' autocomplete='off' />"
     end
 
-    assert_dom_equal expected, output_buffer
+    assert_dom_equal expected, @rendered
   end
 
   def test_form_with_with_index_and_with_collection_radio_buttons
@@ -631,7 +624,7 @@ class FormWithActsLikeFormForTest < FormWithTest
       "<label for='post_1_active_false'>false</label>"
     end
 
-    assert_dom_equal expected, output_buffer
+    assert_dom_equal expected, @rendered
   end
 
   def test_form_with_with_collection_check_boxes
@@ -652,7 +645,7 @@ class FormWithActsLikeFormForTest < FormWithTest
       "<label for='post_tag_ids_3'>Tag 3</label>"
     end
 
-    assert_dom_equal expected, output_buffer
+    assert_dom_equal expected, @rendered
   end
 
   def test_form_with_with_collection_check_boxes_with_custom_builder_block
@@ -679,7 +672,7 @@ class FormWithActsLikeFormForTest < FormWithTest
       "Tag 3</label>"
     end
 
-    assert_dom_equal expected, output_buffer
+    assert_dom_equal expected, @rendered
   end
 
   def test_form_with_with_collection_check_boxes_with_custom_builder_block_does_not_leak_the_template
@@ -710,7 +703,7 @@ class FormWithActsLikeFormForTest < FormWithTest
       "<input name='post[id]' type='hidden' value='1' id='post_id' autocomplete='off' />"
     end
 
-    assert_dom_equal expected, output_buffer
+    assert_dom_equal expected, @rendered
   end
 
   def test_form_with_index_and_with_collection_check_boxes
@@ -728,7 +721,7 @@ class FormWithActsLikeFormForTest < FormWithTest
       "<label for='post_1_tag_ids_1'>Tag 1</label>"
     end
 
-    assert_dom_equal expected, output_buffer
+    assert_dom_equal expected, @rendered
   end
 
   def test_form_with_with_file_field_generate_multipart
@@ -740,7 +733,7 @@ class FormWithActsLikeFormForTest < FormWithTest
       "<input name='post[file]' type='file' id='post_file' />"
     end
 
-    assert_dom_equal expected, output_buffer
+    assert_dom_equal expected, @rendered
   end
 
   def test_fields_with_file_field_generate_multipart
@@ -754,7 +747,7 @@ class FormWithActsLikeFormForTest < FormWithTest
       "<input name='post[comment][file]' type='file' id='post_comment_file'/>"
     end
 
-    assert_dom_equal expected, output_buffer
+    assert_dom_equal expected, @rendered
   end
 
   def test_form_with_with_format
@@ -766,7 +759,7 @@ class FormWithActsLikeFormForTest < FormWithTest
       "<label for='post_title'>Title</label>"
     end
 
-    assert_dom_equal expected, output_buffer
+    assert_dom_equal expected, @rendered
   end
 
   def test_form_with_with_format_and_url
@@ -778,7 +771,7 @@ class FormWithActsLikeFormForTest < FormWithTest
       "<label for='post_title'>Title</label>"
     end
 
-    assert_dom_equal expected, output_buffer
+    assert_dom_equal expected, @rendered
   end
 
   def test_form_with_with_model_using_relative_model_naming
@@ -794,7 +787,7 @@ class FormWithActsLikeFormForTest < FormWithTest
       "<input name='commit' data-disable-with='Edit post' type='submit' value='Edit post' />"
     end
 
-    assert_dom_equal expected, output_buffer
+    assert_dom_equal expected, @rendered
   end
 
   def test_form_with_with_symbol_scope
@@ -815,7 +808,7 @@ class FormWithActsLikeFormForTest < FormWithTest
       "<input name='commit' value='Create post' data-disable-with='Create post' type='submit' />"
     end
 
-    assert_dom_equal expected, output_buffer
+    assert_dom_equal expected, @rendered
   end
 
   def test_form_with_with_method_as_part_of_html_options
@@ -832,7 +825,7 @@ class FormWithActsLikeFormForTest < FormWithTest
       "<input name='post[secret]' checked='checked' type='checkbox' value='1' id='post_secret'/>"
     end
 
-    assert_dom_equal expected, output_buffer
+    assert_dom_equal expected, @rendered
   end
 
   def test_form_with_with_method
@@ -849,7 +842,7 @@ class FormWithActsLikeFormForTest < FormWithTest
       "<input name='post[secret]' checked='checked' type='checkbox' value='1' id='post_secret' />"
     end
 
-    assert_dom_equal expected, output_buffer
+    assert_dom_equal expected, @rendered
   end
 
   def test_form_with_with_search_field
@@ -863,7 +856,7 @@ class FormWithActsLikeFormForTest < FormWithTest
       "<input name='post[title]' type='search' id='post_title' />"
     end
 
-    assert_dom_equal expected, output_buffer
+    assert_dom_equal expected, @rendered
   end
 
   def test_form_with_enables_remote_by_default
@@ -880,7 +873,7 @@ class FormWithActsLikeFormForTest < FormWithTest
       "<input name='post[secret]' checked='checked' type='checkbox' value='1' id='post_secret' />"
     end
 
-    assert_dom_equal expected, output_buffer
+    assert_dom_equal expected, @rendered
   end
 
   def test_form_is_not_remote_by_default_if_form_with_generates_remote_forms_is_false
@@ -900,7 +893,7 @@ class FormWithActsLikeFormForTest < FormWithTest
       "<input name='post[secret]' checked='checked' type='checkbox' value='1' id='post_secret' />"
     end
 
-    assert_dom_equal expected, output_buffer
+    assert_dom_equal expected, @rendered
   ensure
     ActionView::Helpers::FormHelper.form_with_generates_remote_forms = old_value
   end
@@ -914,7 +907,7 @@ class FormWithActsLikeFormForTest < FormWithTest
       "<input name='post[title]' type='text' value='Hello World' id='post_title' />"
     end
 
-    assert_dom_equal expected, output_buffer
+    assert_dom_equal expected, @rendered
   end
 
   def test_form_with_skip_enforcing_utf8_false
@@ -926,7 +919,7 @@ class FormWithActsLikeFormForTest < FormWithTest
       "<input name='post[title]' type='text' value='Hello World' id='post_title' />"
     end
 
-    assert_dom_equal expected, output_buffer
+    assert_dom_equal expected, @rendered
   end
 
   def test_form_with_default_enforce_utf8_true
@@ -939,7 +932,7 @@ class FormWithActsLikeFormForTest < FormWithTest
         "<input name='post[title]' type='text' value='Hello World' id='post_title' />"
       end
 
-      assert_dom_equal expected, output_buffer
+      assert_dom_equal expected, @rendered
     end
   end
 
@@ -953,7 +946,7 @@ class FormWithActsLikeFormForTest < FormWithTest
         "<input name='post[title]' type='text' value='Hello World' id='post_title' />"
       end
 
-      assert_dom_equal expected, output_buffer
+      assert_dom_equal expected, @rendered
     end
   end
 
@@ -971,7 +964,7 @@ class FormWithActsLikeFormForTest < FormWithTest
       "<input name='post[secret]' checked='checked' type='checkbox' value='1' id='post_secret' />"
     end
 
-    assert_dom_equal expected, output_buffer
+    assert_dom_equal expected, @rendered
   end
 
   def test_form_with_with_index
@@ -990,7 +983,7 @@ class FormWithActsLikeFormForTest < FormWithTest
       "<input name='post[123][secret]' checked='checked' type='checkbox' value='1' id='post_123_secret' />"
     end
 
-    assert_dom_equal expected, output_buffer
+    assert_dom_equal expected, @rendered
   end
 
   def test_form_with_with_nil_index_option_override
@@ -1007,7 +1000,7 @@ class FormWithActsLikeFormForTest < FormWithTest
       "<input name='post[][secret]' checked='checked' type='checkbox' value='1' id='post__secret' />"
     end
 
-    assert_dom_equal expected, output_buffer
+    assert_dom_equal expected, @rendered
   end
 
   def test_form_with_label_passes_translation_to_block_version
@@ -1023,7 +1016,7 @@ class FormWithActsLikeFormForTest < FormWithTest
       %(<label for="post_title"><span>Title</span></label>)
     end
 
-    assert_dom_equal expected, output_buffer
+    assert_dom_equal expected, @rendered
   end
 
   def test_form_with_label_passes_label_tag_builder_to_block_version
@@ -1039,7 +1032,7 @@ class FormWithActsLikeFormForTest < FormWithTest
       %(<label for="post_title"><span>Title</span></label>)
     end
 
-    assert_dom_equal expected, output_buffer
+    assert_dom_equal expected, @rendered
   end
 
   def test_form_with_label_accesses_object_through_label_tag_builder
@@ -1055,7 +1048,7 @@ class FormWithActsLikeFormForTest < FormWithTest
       %(<label for="post_title"><span class="new_record">Title</span></label>)
     end
 
-    assert_dom_equal expected, output_buffer
+    assert_dom_equal expected, @rendered
   end
 
   def test_form_with_label_error_wrapping
@@ -1071,7 +1064,7 @@ class FormWithActsLikeFormForTest < FormWithTest
       "<input name='commit' data-disable-with='Create post' type='submit' value='Create post' />"
     end
 
-    assert_dom_equal expected, output_buffer
+    assert_dom_equal expected, @rendered
   end
 
   def test_form_with_label_error_wrapping_without_conventional_instance_variable
@@ -1089,7 +1082,7 @@ class FormWithActsLikeFormForTest < FormWithTest
       "<input name='commit' data-disable-with='Create post' type='submit' value='Create post' />"
     end
 
-    assert_dom_equal expected, output_buffer
+    assert_dom_equal expected, @rendered
   end
 
   def test_form_with_label_error_wrapping_block_and_non_block_versions
@@ -1103,7 +1096,7 @@ class FormWithActsLikeFormForTest < FormWithTest
       "<div class='field_with_errors'><label for='post_author_name' class='label'>Name</label></div>"
     end
 
-    assert_dom_equal expected, output_buffer
+    assert_dom_equal expected, @rendered
   end
 
   def test_submit_with_object_as_new_record_and_locale_strings
@@ -1118,7 +1111,7 @@ class FormWithActsLikeFormForTest < FormWithTest
           "<input name='commit' data-disable-with='Create Post' type='submit' value='Create Post' />"
         end
 
-        assert_dom_equal expected, output_buffer
+        assert_dom_equal expected, @rendered
       end
     end
   end
@@ -1133,7 +1126,7 @@ class FormWithActsLikeFormForTest < FormWithTest
         "<input name='commit' data-disable-with='Confirm Post changes' type='submit' value='Confirm Post changes' />"
       end
 
-      assert_dom_equal expected, output_buffer
+      assert_dom_equal expected, @rendered
     end
   end
 
@@ -1147,7 +1140,7 @@ class FormWithActsLikeFormForTest < FormWithTest
         "<input name='commit' class='extra' data-disable-with='Save changes' type='submit' value='Save changes' />"
       end
 
-      assert_dom_equal expected, output_buffer
+      assert_dom_equal expected, @rendered
     end
   end
 
@@ -1161,7 +1154,7 @@ class FormWithActsLikeFormForTest < FormWithTest
         "<input name='commit' data-disable-with='Update your Post' type='submit' value='Update your Post' />"
       end
 
-      assert_dom_equal expected, output_buffer
+      assert_dom_equal expected, @rendered
     end
   end
 
@@ -1176,7 +1169,7 @@ class FormWithActsLikeFormForTest < FormWithTest
         "<input name='commit' data-disable-with='Update your Post' type='submit' value='Update your Post' />"
       end
 
-      assert_dom_equal expected, output_buffer
+      assert_dom_equal expected, @rendered
     end
   end
 
@@ -1191,7 +1184,7 @@ class FormWithActsLikeFormForTest < FormWithTest
       '<input type="text" name="post[comment][dont_exist_on_model]" id="post_comment_dont_exist_on_model" >'
     end
 
-    assert_dom_equal expected, output_buffer
+    assert_dom_equal expected, @rendered
   end
 
   def test_fields_with_attributes_not_on_model_deep_nested
@@ -1211,7 +1204,7 @@ class FormWithActsLikeFormForTest < FormWithTest
       '<input name="posts[post][0][comment][1][dont_exist_on_model]" type="text" id="posts_post_0_comment_1_dont_exist_on_model" >'
     end
 
-    assert_dom_equal expected, output_buffer
+    assert_dom_equal expected, @rendered
   end
 
   def test_nested_fields
@@ -1226,7 +1219,7 @@ class FormWithActsLikeFormForTest < FormWithTest
       "<input name='post[comment][body]' type='text' value='Hello World' id='post_comment_body' />"
     end
 
-    assert_dom_equal expected, output_buffer
+    assert_dom_equal expected, @rendered
   end
 
   def test_deep_nested_fields
@@ -1246,7 +1239,7 @@ class FormWithActsLikeFormForTest < FormWithTest
       "<input name='posts[post][0][comment][1][name]' type='text' value='comment #1' id='posts_post_0_comment_1_name' />"
     end
 
-    assert_dom_equal expected, output_buffer
+    assert_dom_equal expected, @rendered
   end
 
   def test_nested_fields_with_nested_collections
@@ -1262,7 +1255,7 @@ class FormWithActsLikeFormForTest < FormWithTest
       "<input name='post[123][comment][][name]' type='text' value='new comment' id='post_123_comment__name' />"
     end
 
-    assert_dom_equal expected, output_buffer
+    assert_dom_equal expected, @rendered
   end
 
   def test_nested_fields_with_index_and_parent_fields
@@ -1278,11 +1271,11 @@ class FormWithActsLikeFormForTest < FormWithTest
       "<input name='post[1][comment][1][name]' type='text' value='new comment' id='post_1_comment_1_name' />"
     end
 
-    assert_dom_equal expected, output_buffer
+    assert_dom_equal expected, @rendered
   end
 
   def test_form_with_with_index_and_nested_fields
-    output_buffer = form_with(model: @post, index: 1) do |f|
+    form_with(model: @post, index: 1) do |f|
       concat f.fields(:comment, model: @post) { |c|
         concat c.text_field(:title)
       }
@@ -1292,7 +1285,7 @@ class FormWithActsLikeFormForTest < FormWithTest
       "<input name='post[1][comment][title]' type='text' value='Hello World' id='post_1_comment_title' />"
     end
 
-    assert_dom_equal expected, output_buffer
+    assert_dom_equal expected, @rendered
   end
 
   def test_nested_fields_with_index_on_both
@@ -1306,7 +1299,7 @@ class FormWithActsLikeFormForTest < FormWithTest
       "<input name='post[1][comment][5][title]' type='text' value='Hello World' id='post_1_comment_5_title' />"
     end
 
-    assert_dom_equal expected, output_buffer
+    assert_dom_equal expected, @rendered
   end
 
   def test_nested_fields_with_auto_index
@@ -1320,7 +1313,7 @@ class FormWithActsLikeFormForTest < FormWithTest
       "<input name='post[123][comment][title]' type='text' value='Hello World' id='post_123_comment_title' />"
     end
 
-    assert_dom_equal expected, output_buffer
+    assert_dom_equal expected, @rendered
   end
 
   def test_nested_fields_with_index_radio_button
@@ -1334,7 +1327,7 @@ class FormWithActsLikeFormForTest < FormWithTest
       "<input name='post[comment][5][title]' type='radio' value='hello' id='post_comment_5_title_hello' />"
     end
 
-    assert_dom_equal expected, output_buffer
+    assert_dom_equal expected, @rendered
   end
 
   def test_nested_fields_with_auto_index_on_both
@@ -1348,29 +1341,33 @@ class FormWithActsLikeFormForTest < FormWithTest
       "<input name='post[123][comment][123][title]' type='text' value='Hello World' id='post_123_comment_123_title' />"
     end
 
-    assert_dom_equal expected, output_buffer
+    assert_dom_equal expected, @rendered
   end
 
   def test_nested_fields_with_index_and_auto_index
-    output_buffer = form_with(model: @post, scope: "post[]") do |f|
+    form_with(model: @post, scope: "post[]") do |f|
       concat f.fields(:comment, model: @post, index: 5) { |c|
-        concat c.text_field(:title)
-      }
-    end
-
-    output_buffer << form_with(model: @post, index: 1) do |f|
-      concat f.fields("comment[]", model: @post) { |c|
         concat c.text_field(:title)
       }
     end
 
     expected = whole_form("/posts/123", method: "patch") do
       "<input name='post[123][comment][5][title]' type='text' value='Hello World' id='post_123_comment_5_title' />"
-    end + whole_form("/posts/123", method: "patch") do
+    end
+
+    assert_dom_equal expected, @rendered
+
+    form_with(model: @post, index: 1) do |f|
+      concat f.fields("comment[]", model: @post) { |c|
+        concat c.text_field(:title)
+      }
+    end
+
+    expected = whole_form("/posts/123", method: "patch") do
       "<input name='post[1][comment][123][title]' type='text' value='Hello World' id='post_1_comment_123_title' />"
     end
 
-    assert_dom_equal expected, output_buffer
+    assert_dom_equal expected, @rendered
   end
 
   def test_nested_fields_with_a_new_record_on_a_nested_attributes_one_to_one_association
@@ -1388,7 +1385,7 @@ class FormWithActsLikeFormForTest < FormWithTest
         '<input name="post[author_attributes][name]" type="text" value="new author" id="post_author_attributes_name" />'
     end
 
-    assert_dom_equal expected, output_buffer
+    assert_dom_equal expected, @rendered
   end
 
   def test_nested_fields_with_explicitly_passed_object_on_a_nested_attributes_one_to_one_association
@@ -1416,7 +1413,7 @@ class FormWithActsLikeFormForTest < FormWithTest
       '<input name="post[author_attributes][id]" type="hidden" value="321" id="post_author_attributes_id" autocomplete="off" />'
     end
 
-    assert_dom_equal expected, output_buffer
+    assert_dom_equal expected, @rendered
   end
 
   def test_nested_fields_with_an_existing_record_on_a_nested_attributes_one_to_one_association_using_erb_and_inline_block
@@ -1435,7 +1432,7 @@ class FormWithActsLikeFormForTest < FormWithTest
       '<input name="post[author_attributes][id]" type="hidden" value="321" id="post_author_attributes_id" autocomplete="off" />'
     end
 
-    assert_dom_equal expected, output_buffer
+    assert_dom_equal expected, @rendered
   end
 
   def test_nested_fields_with_an_existing_record_on_a_nested_attributes_one_to_one_association_with_disabled_hidden_id
@@ -1453,7 +1450,7 @@ class FormWithActsLikeFormForTest < FormWithTest
       '<input name="post[author_attributes][name]" type="text" value="author #321" id="post_author_attributes_name" />'
     end
 
-    assert_dom_equal expected, output_buffer
+    assert_dom_equal expected, @rendered
   end
 
   def test_nested_fields_with_an_existing_record_on_a_nested_attributes_one_to_one_association_with_disabled_hidden_id_inherited
@@ -1471,7 +1468,7 @@ class FormWithActsLikeFormForTest < FormWithTest
       '<input name="post[author_attributes][name]" type="text" value="author #321" id="post_author_attributes_name" />'
     end
 
-    assert_dom_equal expected, output_buffer
+    assert_dom_equal expected, @rendered
   end
 
   def test_nested_fields_with_an_existing_record_on_a_nested_attributes_one_to_one_association_with_disabled_hidden_id_override
@@ -1490,7 +1487,7 @@ class FormWithActsLikeFormForTest < FormWithTest
       '<input name="post[author_attributes][id]" type="hidden" value="321" id="post_author_attributes_id" autocomplete="off" />'
     end
 
-    assert_dom_equal expected, output_buffer
+    assert_dom_equal expected, @rendered
   end
 
   def test_nested_fields_with_existing_records_on_a_nested_attributes_one_to_one_association_with_explicit_hidden_field_placement
@@ -1510,7 +1507,7 @@ class FormWithActsLikeFormForTest < FormWithTest
       '<input name="post[author_attributes][name]" type="text" value="author #321" id="post_author_attributes_name" />'
     end
 
-    assert_dom_equal expected, output_buffer
+    assert_dom_equal expected, @rendered
   end
 
   def test_nested_fields_with_existing_records_on_a_nested_attributes_collection_association
@@ -1533,7 +1530,7 @@ class FormWithActsLikeFormForTest < FormWithTest
       '<input name="post[comments_attributes][1][id]" type="hidden" value="2" id="post_comments_attributes_1_id" autocomplete="off" />'
     end
 
-    assert_dom_equal expected, output_buffer
+    assert_dom_equal expected, @rendered
   end
 
   def test_nested_fields_with_existing_records_on_a_nested_attributes_collection_association_with_disabled_hidden_id
@@ -1560,7 +1557,7 @@ class FormWithActsLikeFormForTest < FormWithTest
       '<input name="post[comments_attributes][1][name]" type="text" value="comment #2" id="post_comments_attributes_1_name" />'
     end
 
-    assert_dom_equal expected, output_buffer
+    assert_dom_equal expected, @rendered
   end
 
   def test_nested_fields_with_existing_records_on_a_nested_attributes_collection_association_with_disabled_hidden_id_inherited
@@ -1586,7 +1583,7 @@ class FormWithActsLikeFormForTest < FormWithTest
       '<input name="post[comments_attributes][1][name]" type="text" value="comment #2" id="post_comments_attributes_1_name" />'
     end
 
-    assert_dom_equal expected, output_buffer
+    assert_dom_equal expected, @rendered
   end
 
   def test_nested_fields_with_existing_records_on_a_nested_attributes_collection_association_with_disabled_hidden_id_override
@@ -1613,7 +1610,7 @@ class FormWithActsLikeFormForTest < FormWithTest
       '<input name="post[comments_attributes][1][name]" type="text" value="comment #2" id="post_comments_attributes_1_name" />'
     end
 
-    assert_dom_equal expected, output_buffer
+    assert_dom_equal expected, @rendered
   end
 
   def test_nested_fields_with_existing_records_on_a_nested_attributes_collection_association_using_erb_and_inline_block
@@ -1636,7 +1633,7 @@ class FormWithActsLikeFormForTest < FormWithTest
       '<input name="post[comments_attributes][1][id]" type="hidden" value="2" id="post_comments_attributes_1_id" autocomplete="off" />'
     end
 
-    assert_dom_equal expected, output_buffer
+    assert_dom_equal expected, @rendered
   end
 
   def test_nested_fields_with_existing_records_on_a_nested_attributes_collection_association_with_explicit_hidden_field_placement
@@ -1660,7 +1657,7 @@ class FormWithActsLikeFormForTest < FormWithTest
       '<input name="post[comments_attributes][1][name]" type="text" value="comment #2" id="post_comments_attributes_1_name" />'
     end
 
-    assert_dom_equal expected, output_buffer
+    assert_dom_equal expected, @rendered
   end
 
   def test_nested_fields_with_new_records_on_a_nested_attributes_collection_association
@@ -1681,7 +1678,7 @@ class FormWithActsLikeFormForTest < FormWithTest
       '<input name="post[comments_attributes][1][name]" type="text" value="new comment" id="post_comments_attributes_1_name" />'
     end
 
-    assert_dom_equal expected, output_buffer
+    assert_dom_equal expected, @rendered
   end
 
   def test_nested_fields_with_existing_and_new_records_on_a_nested_attributes_collection_association
@@ -1703,7 +1700,7 @@ class FormWithActsLikeFormForTest < FormWithTest
       '<input name="post[comments_attributes][1][name]" type="text" value="new comment" id="post_comments_attributes_1_name" />'
     end
 
-    assert_dom_equal expected, output_buffer
+    assert_dom_equal expected, @rendered
   end
 
   def test_nested_fields_with_an_empty_supplied_attributes_collection
@@ -1718,7 +1715,7 @@ class FormWithActsLikeFormForTest < FormWithTest
       '<input name="post[title]" type="text" value="Hello World" id="post_title" />'
     end
 
-    assert_dom_equal expected, output_buffer
+    assert_dom_equal expected, @rendered
   end
 
   def test_nested_fields_with_existing_records_on_a_supplied_nested_attributes_collection
@@ -1739,7 +1736,7 @@ class FormWithActsLikeFormForTest < FormWithTest
       '<input name="post[comments_attributes][1][id]" type="hidden" value="2" id="post_comments_attributes_1_id" autocomplete="off" />'
     end
 
-    assert_dom_equal expected, output_buffer
+    assert_dom_equal expected, @rendered
   end
 
   def test_nested_fields_arel_like
@@ -1760,20 +1757,26 @@ class FormWithActsLikeFormForTest < FormWithTest
       '<input name="post[comments_attributes][1][id]" type="hidden" value="2" id="post_comments_attributes_1_id" autocomplete="off" />'
     end
 
-    assert_dom_equal expected, output_buffer
+    assert_dom_equal expected, @rendered
   end
 
   def test_nested_fields_label_translation_with_more_than_10_records
     @post.comments = Array.new(11) { |id| Comment.new(id + 1) }
 
-    params = 11.times.map { ["post.comments.body", default: [:"comment.body", ""], scope: "helpers.label"] }
-    assert_called_with(I18n, :t, params, returns: "Write body here") do
+    mock = Minitest::Mock.new
+    @post.comments.each do
+      expect_called_with(mock, ["post.comments.body"], default: [:"comment.body", ""], scope: "helpers.label", returns: "body")
+    end
+
+    I18n.stub(:t, mock) do
       form_with(model: @post) do |f|
         f.fields(:comments) do |cf|
           concat cf.label(:body)
         end
       end
     end
+
+    assert_mock(mock)
   end
 
   def test_nested_fields_with_existing_records_on_a_supplied_nested_attributes_collection_different_from_record_one
@@ -1795,7 +1798,7 @@ class FormWithActsLikeFormForTest < FormWithTest
       '<input name="post[comments_attributes][1][id]" type="hidden" value="2" id="post_comments_attributes_1_id" autocomplete="off" />'
     end
 
-    assert_dom_equal expected, output_buffer
+    assert_dom_equal expected, @rendered
   end
 
   def test_nested_fields_on_a_nested_attributes_collection_association_yields_only_builder
@@ -1817,7 +1820,7 @@ class FormWithActsLikeFormForTest < FormWithTest
       '<input name="post[comments_attributes][1][name]" type="text" value="new comment" id="post_comments_attributes_1_name" />'
     end
 
-    assert_dom_equal expected, output_buffer
+    assert_dom_equal expected, @rendered
     assert_equal yielded_comments, @post.comments
   end
 
@@ -1835,7 +1838,7 @@ class FormWithActsLikeFormForTest < FormWithTest
       '<input name="post[comments_attributes][abc][id]" type="hidden" value="321" id="post_comments_attributes_abc_id" autocomplete="off" />'
     end
 
-    assert_dom_equal expected, output_buffer
+    assert_dom_equal expected, @rendered
   end
 
   def test_nested_fields_with_child_index_as_lambda_option_override_on_a_nested_attributes_collection_association
@@ -1852,7 +1855,7 @@ class FormWithActsLikeFormForTest < FormWithTest
       '<input name="post[comments_attributes][abc][id]" type="hidden" value="321" id="post_comments_attributes_abc_id" autocomplete="off" />'
     end
 
-    assert_dom_equal expected, output_buffer
+    assert_dom_equal expected, @rendered
   end
 
   class FakeAssociationProxy
@@ -1875,7 +1878,7 @@ class FormWithActsLikeFormForTest < FormWithTest
       '<input name="post[comments_attributes][abc][id]" type="hidden" value="321" id="post_comments_attributes_abc_id" autocomplete="off" />'
     end
 
-    assert_dom_equal expected, output_buffer
+    assert_dom_equal expected, @rendered
   end
 
   def test_nested_fields_index_method_with_existing_records_on_a_nested_attributes_collection_association
@@ -1971,7 +1974,7 @@ class FormWithActsLikeFormForTest < FormWithTest
       '<input name="post[tags_attributes][1][id]" type="hidden" value="456" id="post_tags_attributes_1_id" autocomplete="off"/>'
     end
 
-    assert_dom_equal expected, output_buffer
+    assert_dom_equal expected, @rendered
   end
 
   def test_nested_fields_with_hash_like_model
@@ -1987,11 +1990,27 @@ class FormWithActsLikeFormForTest < FormWithTest
       '<input name="post[author_attributes][name]" type="text" value="hash backed author" id="post_author_attributes_name" />'
     end
 
-    assert_dom_equal expected, output_buffer
+    assert_dom_equal expected, @rendered
+  end
+
+  def test_nested_fields_with_hash_with_indifferent_access_like_model
+    @author = HashWithIndifferentAccessBackedAuthor.new
+
+    form_with(model: @post) do |f|
+      concat f.fields(:author, model: @author) { |af|
+        concat af.text_field(:name)
+      }
+    end
+
+    expected = whole_form("/posts/123", method: "patch") do
+      '<input name="post[author_attributes][name]" type="text" value="hash backed author" id="post_author_attributes_name" />'
+    end
+
+    assert_dom_equal expected, @rendered
   end
 
   def test_fields
-    output_buffer = fields(:post, model: @post) do |f|
+    @rendered = fields(:post, model: @post) do |f|
       concat f.text_field(:title)
       concat f.text_area(:body)
       concat f.check_box(:secret)
@@ -2003,11 +2022,11 @@ class FormWithActsLikeFormForTest < FormWithTest
       "<input name='post[secret]' type='hidden' value='0' autocomplete='off' />" \
       "<input name='post[secret]' checked='checked' type='checkbox' value='1' id='post_secret' />"
 
-    assert_dom_equal expected, output_buffer
+    assert_dom_equal expected, @rendered
   end
 
   def test_fields_with_index
-    output_buffer = fields("post[]", model: @post) do |f|
+    @rendered = fields("post[]", model: @post) do |f|
       concat f.text_field(:title)
       concat f.text_area(:body)
       concat f.check_box(:secret)
@@ -2019,11 +2038,11 @@ class FormWithActsLikeFormForTest < FormWithTest
       "<input name='post[123][secret]' type='hidden' value='0' autocomplete='off' />" \
       "<input name='post[123][secret]' checked='checked' type='checkbox' value='1' id='post_123_secret' />"
 
-    assert_dom_equal expected, output_buffer
+    assert_dom_equal expected, @rendered
   end
 
   def test_fields_with_nil_index_option_override
-    output_buffer = fields("post[]", model: @post, index: nil) do |f|
+    @rendered = fields("post[]", model: @post, index: nil) do |f|
       concat f.text_field(:title)
       concat f.text_area(:body)
       concat f.check_box(:secret)
@@ -2035,11 +2054,11 @@ class FormWithActsLikeFormForTest < FormWithTest
       "<input name='post[][secret]' type='hidden' value='0' autocomplete='off' />" \
       "<input name='post[][secret]' checked='checked' type='checkbox' value='1' id='post__secret' />"
 
-    assert_dom_equal expected, output_buffer
+    assert_dom_equal expected, @rendered
   end
 
   def test_fields_with_index_option_override
-    output_buffer = fields("post[]", model: @post, index: "abc") do |f|
+    @rendered = fields("post[]", model: @post, index: "abc") do |f|
       concat f.text_field(:title)
       concat f.text_area(:body)
       concat f.check_box(:secret)
@@ -2051,11 +2070,11 @@ class FormWithActsLikeFormForTest < FormWithTest
       "<input name='post[abc][secret]' type='hidden' value='0' autocomplete='off' />" \
       "<input name='post[abc][secret]' checked='checked' type='checkbox' value='1' id='post_abc_secret' />"
 
-    assert_dom_equal expected, output_buffer
+    assert_dom_equal expected, @rendered
   end
 
   def test_fields_without_object
-    output_buffer = fields(:post) do |f|
+    @rendered = fields(:post) do |f|
       concat f.text_field(:title)
       concat f.text_area(:body)
       concat f.check_box(:secret)
@@ -2067,11 +2086,11 @@ class FormWithActsLikeFormForTest < FormWithTest
       "<input name='post[secret]' type='hidden' value='0' autocomplete='off' />" \
       "<input name='post[secret]' checked='checked' type='checkbox' value='1' id='post_secret' />"
 
-    assert_dom_equal expected, output_buffer
+    assert_dom_equal expected, @rendered
   end
 
   def test_fields_with_only_object
-    output_buffer = fields(model: @post) do |f|
+    @rendered = fields(model: @post) do |f|
       concat f.text_field(:title)
       concat f.text_area(:body)
       concat f.check_box(:secret)
@@ -2083,39 +2102,39 @@ class FormWithActsLikeFormForTest < FormWithTest
       "<input name='post[secret]' type='hidden' value='0' autocomplete='off' />" \
       "<input name='post[secret]' checked='checked' type='checkbox' value='1' id='post_secret' />"
 
-    assert_dom_equal expected, output_buffer
+    assert_dom_equal expected, @rendered
   end
 
   def test_fields_with_only_object_array
-    output_buffer = fields(model: [@post, @comment]) do |f|
+    @rendered = fields(model: [@post, @comment]) do |f|
       concat f.text_field(:name)
     end
 
     expected = %(<input type="text" value="new comment" name="comment[name]" id="comment_name" />)
 
-    assert_dom_equal expected, output_buffer
+    assert_dom_equal expected, @rendered
   end
 
   def test_fields_object_with_bracketed_name
-    output_buffer = fields("author[post]", model: @post) do |f|
+    @rendered = fields("author[post]", model: @post) do |f|
       concat f.label(:title)
       concat f.text_field(:title)
     end
 
     assert_dom_equal "<label for=\"author_post_title\">Title</label>" \
     "<input name='author[post][title]' type='text' value='Hello World' id='author_post_title' id='author_post_1_title' />",
-      output_buffer
+      @rendered
   end
 
   def test_fields_object_with_bracketed_name_and_index
-    output_buffer = fields("author[post]", model: @post, index: 1) do |f|
+    @rendered = fields("author[post]", model: @post, index: 1) do |f|
       concat f.label(:title)
       concat f.text_field(:title)
     end
 
     assert_dom_equal "<label for=\"author_post_1_title\">Title</label>" \
       "<input name='author[post][1][title]' type='text' value='Hello World' id='author_post_1_title' />",
-      output_buffer
+      @rendered
   end
 
   def test_form_builder_does_not_have_form_with_method
@@ -2139,7 +2158,7 @@ class FormWithActsLikeFormForTest < FormWithTest
       "<input name='parent_post[secret]' checked='checked' type='checkbox' value='1' id='parent_post_secret' />"
     end
 
-    assert_dom_equal expected, output_buffer
+    assert_dom_equal expected, @rendered
   end
 
   def test_form_with_and_fields_with_object
@@ -2158,7 +2177,7 @@ class FormWithActsLikeFormForTest < FormWithTest
       "<input name='post[comment][name]' type='text' value='new comment' id='post_comment_name' />"
     end
 
-    assert_dom_equal expected, output_buffer
+    assert_dom_equal expected, @rendered
   end
 
   def test_form_with_and_fields_with_non_nested_association_and_without_object
@@ -2172,7 +2191,7 @@ class FormWithActsLikeFormForTest < FormWithTest
       "<input name='post[category][name]' type='text' id='post_category_name' />"
     end
 
-    assert_dom_equal expected, output_buffer
+    assert_dom_equal expected, @rendered
   end
 
   class LabelledFormBuilder < ActionView::Helpers::FormBuilder
@@ -2199,7 +2218,7 @@ class FormWithActsLikeFormForTest < FormWithTest
       "<label for='secret'>Secret:</label> <input name='post[secret]' type='hidden' value='0' autocomplete='off' /><input name='post[secret]' checked='checked' type='checkbox' value='1' id='post_secret' /><br/>"
     end
 
-    assert_dom_equal expected, output_buffer
+    assert_dom_equal expected, @rendered
   end
 
   def test_default_form_builder
@@ -2218,7 +2237,7 @@ class FormWithActsLikeFormForTest < FormWithTest
       "<label for='secret'>Secret:</label> <input name='post[secret]' type='hidden' value='0' autocomplete='off' /><input name='post[secret]' checked='checked' type='checkbox' value='1' id='post_secret' /><br/>"
     end
 
-    assert_dom_equal expected, output_buffer
+    assert_dom_equal expected, @rendered
   ensure
     ActionView::Base.default_form_builder = old_default_form_builder
   end
@@ -2235,7 +2254,7 @@ class FormWithActsLikeFormForTest < FormWithTest
       "<label for='title'>Title:</label> <input name='post[title]' type='text' value='Hello World' id='post_title' /><br/>"
     end
 
-    assert_dom_equal expected, output_buffer
+    assert_dom_equal expected, @rendered
   ensure
     ActionView::Base.default_form_builder = old_default_form_builder
   end
@@ -2243,29 +2262,29 @@ class FormWithActsLikeFormForTest < FormWithTest
   def test_form_builder_override
     self.default_form_builder = LabelledFormBuilder
 
-    output_buffer = fields(:post, model: @post) do |f|
+    @rendered = fields(:post, model: @post) do |f|
       concat f.text_field(:title)
     end
 
     expected = "<label for='title'>Title:</label> <input name='post[title]' type='text' value='Hello World' id='post_title' /><br/>"
 
-    assert_dom_equal expected, output_buffer
+    assert_dom_equal expected, @rendered
   end
 
   def test_lazy_loading_form_builder_override
     self.default_form_builder = "FormWithActsLikeFormForTest::LabelledFormBuilder"
 
-    output_buffer = fields(:post, model: @post) do |f|
+    @rendered = fields(:post, model: @post) do |f|
       concat f.text_field(:title)
     end
 
     expected = "<label for='title'>Title:</label> <input name='post[title]' type='text' value='Hello World' id='post_title' /><br/>"
 
-    assert_dom_equal expected, output_buffer
+    assert_dom_equal expected, @rendered
   end
 
   def test_fields_with_labelled_builder
-    output_buffer = fields(:post, model: @post, builder: LabelledFormBuilder) do |f|
+    @rendered = fields(:post, model: @post, builder: LabelledFormBuilder) do |f|
       concat f.text_field(:title)
       concat f.text_area(:body)
       concat f.check_box(:secret)
@@ -2276,7 +2295,7 @@ class FormWithActsLikeFormForTest < FormWithTest
       "<label for='body'>Body:</label> <textarea name='post[body]' id='post_body'>\nBack to the hill and over it again!</textarea><br/>" \
       "<label for='secret'>Secret:</label> <input name='post[secret]' type='hidden' value='0' autocomplete='off' /><input name='post[secret]' checked='checked' type='checkbox' value='1' id='post_secret' /><br/>"
 
-    assert_dom_equal expected, output_buffer
+    assert_dom_equal expected, @rendered
   end
 
   def test_form_with_with_labelled_builder_with_nested_fields_without_options_hash
@@ -2335,13 +2354,13 @@ class FormWithActsLikeFormForTest < FormWithTest
     form_with(model: @post, html: { id: "some_form", class: "some_class", multipart: true }) do |f| end
     expected = whole_form("/posts/123", "some_form", "some_class", method: "patch", multipart: "multipart/form-data")
 
-    assert_dom_equal expected, output_buffer
+    assert_dom_equal expected, @rendered
   end
 
   def test_form_with_with_string_url_option
     form_with(model: @post, url: "http://www.otherdomain.com") do |f| end
 
-    assert_dom_equal whole_form("http://www.otherdomain.com", method: "patch"), output_buffer
+    assert_dom_equal whole_form("http://www.otherdomain.com", method: "patch"), @rendered
   end
 
   def test_form_with_with_hash_url_option
@@ -2355,14 +2374,14 @@ class FormWithActsLikeFormForTest < FormWithTest
     form_with(model: @post, url: @post) do |f| end
 
     expected = whole_form("/posts/123", method: "patch")
-    assert_dom_equal expected, output_buffer
+    assert_dom_equal expected, @rendered
   end
 
   def test_form_with_with_existing_object
     form_with(model: @post) do |f| end
 
     expected = whole_form("/posts/123", method: "patch")
-    assert_dom_equal expected, output_buffer
+    assert_dom_equal expected, @rendered
   end
 
   def test_form_with_with_new_object
@@ -2373,7 +2392,7 @@ class FormWithActsLikeFormForTest < FormWithTest
     form_with(model: post) { }
 
     expected = whole_form("/posts")
-    assert_dom_equal expected, output_buffer
+    assert_dom_equal expected, @rendered
   end
 
   def test_form_with_with_existing_object_in_list
@@ -2381,14 +2400,14 @@ class FormWithActsLikeFormForTest < FormWithTest
     form_with(model: [@post, @comment]) { }
 
     expected = whole_form(post_comment_path(@post, @comment), method: "patch")
-    assert_dom_equal expected, output_buffer
+    assert_dom_equal expected, @rendered
   end
 
   def test_form_with_with_new_object_in_list
     form_with(model: [@post, @comment]) { }
 
     expected = whole_form(post_comments_path(@post))
-    assert_dom_equal expected, output_buffer
+    assert_dom_equal expected, @rendered
   end
 
   def test_form_with_with_existing_object_and_namespace_in_list
@@ -2396,33 +2415,33 @@ class FormWithActsLikeFormForTest < FormWithTest
     form_with(model: [:admin, @post, @comment]) { }
 
     expected = whole_form(admin_post_comment_path(@post, @comment), method: "patch")
-    assert_dom_equal expected, output_buffer
+    assert_dom_equal expected, @rendered
   end
 
   def test_form_with_with_new_object_and_namespace_in_list
     form_with(model: [:admin, @post, @comment]) { }
 
     expected = whole_form(admin_post_comments_path(@post))
-    assert_dom_equal expected, output_buffer
+    assert_dom_equal expected, @rendered
   end
 
   def test_form_with_with_existing_object_and_custom_url
     form_with(model: @post, url: "/super_posts") do |f| end
 
     expected = whole_form("/super_posts", method: "patch")
-    assert_dom_equal expected, output_buffer
+    assert_dom_equal expected, @rendered
   end
 
   def test_form_with_with_default_method_as_patch
     form_with(model: @post) { }
     expected = whole_form("/posts/123", method: "patch")
-    assert_dom_equal expected, output_buffer
+    assert_dom_equal expected, @rendered
   end
 
   def test_form_with_with_data_attributes
     form_with(model: @post, data: { behavior: "stuff" }) { }
-    assert_match %r|data-behavior="stuff"|, output_buffer
-    assert_match %r|data-remote="true"|, output_buffer
+    assert_match %r|data-behavior="stuff"|, @rendered
+    assert_match %r|data-remote="true"|, @rendered
   end
 
   def test_fields_returns_block_result
@@ -2441,6 +2460,42 @@ class FormWithActsLikeFormForTest < FormWithTest
 
     form_with(model: @post, builder: builder_class) { }
     assert_equal 1, initialization_count, "form builder instantiated more than once"
+  end
+
+  def test_form_with_with_id_option
+    form_with(model: Post.new, id: "new_special_post") do |form|
+      concat form.button(form: form.id)
+    end
+
+    expected = whole_form("/posts", "new_special_post") do
+      '<button name="button" type="submit" form="new_special_post">Create Post</button>'
+    end
+
+    assert_dom_equal expected, @rendered
+  end
+
+  def test_form_with_with_id_option_nested_in_html
+    form_with(model: Post.new, html: { id: "new_special_post" }) do |form|
+      concat form.button(form: form.id)
+    end
+
+    expected = whole_form("/posts", "new_special_post") do
+      '<button name="button" type="submit" form="new_special_post">Create Post</button>'
+    end
+
+    assert_dom_equal expected, @rendered
+  end
+
+  def test_form_with_with_competing_id_option_nested_in_html
+    form_with(model: Post.new, id: "ignored", html: { id: "new_special_post" }) do |form|
+      concat form.button(form: form.id)
+    end
+
+    expected = whole_form("/posts", "new_special_post") do
+      '<button name="button" type="submit" form="new_special_post">Create Post</button>'
+    end
+
+    assert_dom_equal expected, @rendered
   end
 
   private

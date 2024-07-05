@@ -52,11 +52,10 @@ class Date
         strftime(formatter)
       end
     else
-      to_default_s
+      to_s
     end
   end
   alias_method :to_formatted_s, :to_fs
-  alias_method :to_default_s, :to_s
 
   # Overrides the default inspect method with a human readable one, e.g., "Mon, 21 Feb 2005"
   def readable_inspect

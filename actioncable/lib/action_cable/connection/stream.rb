@@ -1,5 +1,7 @@
 # frozen_string_literal: true
 
+# :markup: markdown
+
 module ActionCable
   module Connection
     #--
@@ -98,7 +100,7 @@ module ActionCable
 
         # This should return the underlying io according to the SPEC:
         @rack_hijack_io = @socket_object.env["rack.hijack"].call
-        # Retain existing behaviour if required:
+        # Retain existing behavior if required:
         @rack_hijack_io ||= @socket_object.env["rack.hijack_io"]
 
         @event_loop.attach(@rack_hijack_io, self)

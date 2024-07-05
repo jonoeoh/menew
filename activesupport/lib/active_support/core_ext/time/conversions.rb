@@ -54,12 +54,10 @@ class Time
     if formatter = DATE_FORMATS[format]
       formatter.respond_to?(:call) ? formatter.call(self).to_s : strftime(formatter)
     else
-      # Change to `to_s` when deprecation is gone. Also deprecate `to_default_s`.
-      to_default_s
+      to_s
     end
   end
   alias_method :to_formatted_s, :to_fs
-  alias_method :to_default_s, :to_s
 
   # Returns a formatted string of the offset from UTC, or an alternative
   # string if the time zone is already UTC.
