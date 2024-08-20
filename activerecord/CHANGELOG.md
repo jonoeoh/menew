@@ -1,3 +1,7 @@
+*   Fix association scopes applying on the incorrect join when using a polymorphic `has_many through:`.
+
+    *Joshua Young*
+
 *   Replace `SQLite3::Database#busy_timeout` with `#busy_handler_timeout=`.
 
     Provides a non-GVL-blocking, fair retry interval busy handler implementation.
