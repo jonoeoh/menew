@@ -117,4 +117,11 @@ class FieldOrderedValuesTest < ActiveRecord::TestCase
     assert_equal(order, posts.limit(3).map(&:id))
     assert_equal(11, posts.count)
   end
+
+  def test_in_order_of_with_array_values
+    order = [3, [5, 2], [4, 7], 1]
+    posts = Post.in_order_of(:id, order).order(id: :asc)
+
+    assert_equal([3, 2, 5, 4, 7, 1], posts.map(&:id))
+  end
 end
