@@ -124,4 +124,17 @@ class FieldOrderedValuesTest < ActiveRecord::TestCase
 
     assert_equal([3, 2, 5, 4, 7, 1], posts.map(&:id))
   end
+
+  def test_in_order_of_with_array_values_with_nil
+    Book.destroy_all
+    Book.create!(format: "paperback")
+    Book.create!(format: "ebook")
+    Book.create!(format: nil)
+    Book.create!(format: "letter")
+    Book.create!(format: "digital")
+
+    order = ["ebook", ["paperback", nil, "digital"], "letter"]
+    books = Book.in_order_of(:format, order).order(format: :desc)
+    assert_equal(["ebook", "paperback", "digital", nil, "letter"], books.map(&:format))
+  end
 end

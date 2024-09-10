@@ -733,11 +733,13 @@ module ActiveRecord
       scope = spawn.order!(build_case_for_value_position(arel_column, values, filter: filter))
 
       if filter
+        values = values.flatten(1)
+
         where_clause =
           if values.include?(nil)
-            arel_column.in(values.compact.flatten(1)).or(arel_column.eq(nil))
+            arel_column.in(values.compact).or(arel_column.eq(nil))
           else
-            arel_column.in(values.flatten(1))
+            arel_column.in(values)
           end
 
         scope = scope.where!(where_clause)
@@ -2130,7 +2132,11 @@ module ActiveRecord
         node = Arel::Nodes::Case.new
         values.each.with_index(1) do |value, order|
           if value.is_a?(Array)
-            node.when(column.in(value)).then(order)
+            if value.include?(nil)
+              node.when(column.in(value.compact).or(column.eq(nil))).then(order)
+            else
+              node.when(column.in(value)).then(order)
+            end
           else
             node.when(column.eq(value)).then(order)
           end
