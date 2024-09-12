@@ -134,7 +134,7 @@ class FieldOrderedValuesTest < ActiveRecord::TestCase
     Book.create!(format: "digital")
 
     order = ["ebook", ["paperback", nil, "digital"], "letter"]
-    books = Book.in_order_of(:format, order).order(format: :desc)
+    books = Book.in_order_of(:format, order).order(Book.arel_table[:format].desc.nulls_last)
     assert_equal(["ebook", "paperback", "digital", nil, "letter"], books.map(&:format))
   end
 end
