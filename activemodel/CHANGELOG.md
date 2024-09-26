@@ -1,3 +1,13 @@
+*   Ability to change the default `expires_in` for `has_secure_password` token generator.
+
+    ```ruby
+    class User < ApplicationRecord
+      has_secure_password reset_token: { expires_in: 30.minutes }
+    end
+    ```
+
+    *Abeid Ahmed*
+
 *   Add a default token generator for password reset tokens when using `has_secure_password`.
 
     ```ruby
