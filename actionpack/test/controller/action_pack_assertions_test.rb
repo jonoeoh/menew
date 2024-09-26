@@ -38,6 +38,8 @@ class ActionPackAssertionsController < ActionController::Base
 
   def redirect_permanently() redirect_to "/some/path", status: :moved_permanently end
 
+  def redirect_with_bad_status() redirect_to "/some/path", status: :bad_request end
+
   def response404() head "404 AWOL" end
 
   def response500() head "500 Sorry" end
@@ -469,6 +471,23 @@ class ActionPackAssertionsControllerTest < ActionController::TestCase
     end
     assert_raise ActiveSupport::TestCase::Assertion, "Custom message" do
       assert_redirected_to "http://test.host/some/path", { status: :found }, "Custom message"
+    end
+
+    process :redirect_with_bad_status
+
+    # correctly raises when status is omitted
+    assert_raise ActiveSupport::TestCase::Assertion do
+      assert_redirected_to "http://test.host/some/path"
+    end
+
+    # does NOT raise when non-redirect status is explicitly specified
+    assert_raise ActiveSupport::TestCase::Assertion do
+      assert_redirected_to "http://test.host/some/path", status: :bad_request
+    end
+
+    # does NOT raise when non-redirect status is explicitly specified (with message)
+    assert_raise ActiveSupport::TestCase::Assertion, "Custom message" do
+      assert_redirected_to "http://test.host/some/path", { status: :bad_request }, "Custom message"
     end
   end
 
