@@ -1,3 +1,10 @@
+*   Deprecate `sidekiq` as an adapter option.
+
+    If you're using this adapter, upgrade to `sidekiq` 8.0 or later as it includes
+    Active Job adapter by default.
+
+    *fatkodima*
+
 ## Rails 8.0.0.beta1 (September 26, 2024) ##
 
 *   Deprecate `sucker_punch` as an adapter option.
