@@ -267,6 +267,45 @@ class ActionCable::Channel::BaseTest < ActionCable::TestCase
     assert_equal [ :error_action ], @channel.last_action
   end
 
+  class RejectBeforeSubscribeChannel < ChatChannel
+    before_subscribe { reject }
+  end
+
+  class RejectInSubscribedChannel < ChatChannel
+    def subscribed
+      super
+      reject
+    end
+  end
+
+  class RejectAfterSubscribeChannel < ChatChannel
+    after_subscribe do
+      reject
+      toggle_subscribed
+    end
+  end
+
+  test "#reject in before_subscribe" do
+    channel = RejectBeforeSubscribeChannel.new @connection, "{id: 1}", id: 1
+    channel.subscribe_to_channel
+    assert_nil channel.room
+    assert_not channel.subscribed?
+  end
+
+  test "#reject in #subscribed" do
+    channel = RejectInSubscribedChannel.new @connection, "{id: 1}", id: 1
+    channel.subscribe_to_channel
+    assert_equal 1, channel.room.id
+    assert_not channel.subscribed?
+  end
+
+  test "#reject in after_subscribe" do
+    channel = RejectAfterSubscribeChannel.new @connection, "{id: 1}", id: 1
+    channel.subscribe_to_channel
+    assert_equal 1, channel.room.id
+    assert_not channel.subscribed?
+  end
+
   private
     def assert_logged(message)
       old_logger = @connection.logger
