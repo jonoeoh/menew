@@ -15,14 +15,7 @@ module ActiveSupport
       #     end
       #
       def assert_event(name, payload = nil, &block)
-        events = []
-
-        ActiveSupport::Notifications.subscribe(name) do |*args|
-          events << ActiveSupport::Notifications::Event.new(*args)
-        end
-
-        yield
-
+        events = capture_events(name, &block)
         selected_events = events.select { |event| event.name == name }
         assert_not_empty(selected_events, "No #{name} events were found.")
 
@@ -48,14 +41,7 @@ module ActiveSupport
       #     end
       #
       def assert_events_count(name, count, &block)
-        events = []
-
-        ActiveSupport::Notifications.subscribe(name) do |*args|
-          events << ActiveSupport::Notifications::Event.new(*args)
-        end
-
-        yield
-
+        events = capture_events(name, &block)
         actual_count = events.select { |event| event.name == name }.count
         assert_equal(count, actual_count, "Expected #{count} instead of #{actual_count} events for #{name}")
       end
@@ -71,17 +57,23 @@ module ActiveSupport
       #     end
       #
       def assert_no_events(name, &block)
-        events = []
-
-        ActiveSupport::Notifications.subscribe(name) do |*args|
-          events << ActiveSupport::Notifications::Event.new(*args)
-        end
-
-        yield
-
+        events = capture_events(name, &block)
         selected_events = events.select { |event| event.name == name }
         assert_empty(selected_events, "Expected no events for #{name} but found #{selected_events.size}")
       end
+
+      private
+        def capture_events(name, &block)
+          events = []
+
+          ActiveSupport::Notifications.subscribe(name) do |*args|
+            events << ActiveSupport::Notifications::Event.new(*args)
+          end
+
+          yield
+
+          events
+        end
     end
   end
 end
