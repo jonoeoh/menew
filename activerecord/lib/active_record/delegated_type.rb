@@ -207,6 +207,15 @@ module ActiveRecord
     # The +options+ are passed directly to the +belongs_to+ call, so this is where you declare +dependent+ etc.
     # The following options can be included to specialize the behavior of the delegated type convenience methods.
     #
+    # [+:inverse_of+]
+    #   Specifies the name of the #belongs_to association on the associated object
+    #   that is the inverse of this #has_one association.
+    #   When +config.active_record.automatic_scope_inversing+ is true, the
+    #   singularized class name is inferred unless a +:foreign_key+ option is
+    #   also provided. For example, declaring <tt>delegated_type :entryable</tt>
+    #   will infer <tt>inverse_of: :entry</tt>.
+    #   See ActiveRecord::Associations::ClassMethods's overview on Bi-directional
+    #   associations for more detail.
     # [:foreign_key]
     #   Specify the foreign key used for the convenience methods. By default this is guessed to be the passed
     #   +role+ with an "_id" suffix. So a class that defines a
@@ -229,6 +238,10 @@ module ActiveRecord
     #   Entry#message_uuid      # => returns entryable_uuid, when entryable_type == "Message", otherwise nil
     #   Entry#comment_uuid      # => returns entryable_uuid, when entryable_type == "Comment", otherwise nil
     def delegated_type(role, types:, **options)
+      if automatic_scope_inversing && !(options.key?(:inverse_of) || options.key?(:foreign_key))
+        options[:inverse_of] = model_name.singular
+      end
+
       belongs_to role, options.delete(:scope), **options.merge(polymorphic: true)
       define_delegated_type_methods role, types: types, options: options
     end

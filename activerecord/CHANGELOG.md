@@ -6,6 +6,19 @@
 
 ## Rails 8.0.0.beta1 (September 26, 2024) ##
 
+*   Infer default `:inverse_of` option for `delegated_type` definitions when
+    `config.active_record.automatic_scope_inversing = true`
+
+    ```ruby
+    class Entry < ApplicationRecord
+      # When `config.active_record.automatic_scope_inversing = true`,
+      # automatically infer `inverse_of: :entry` option
+      delegated_type :entryable, types: %w[ Message ]
+    end
+    ```
+
+    *Sean Doyle*
+
 *   Allow `drop_table` to accept an array of table names.
 
     This will let you to drop multiple tables in a single call.
