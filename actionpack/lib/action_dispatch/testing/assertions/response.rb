@@ -61,7 +61,9 @@ module ActionDispatch
         options, message = {}, options unless options.is_a?(Hash)
 
         status = options[:status] || :redirect
+        assert_response(:redirect, message) unless status == :redirect
         assert_response(status, message)
+
         return true if url_options === @response.location
 
         redirect_is       = normalize_argument_to_redirection(@response.location)
