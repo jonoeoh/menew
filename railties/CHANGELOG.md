@@ -1,5 +1,13 @@
 ## Rails 8.0.0.beta1 (September 26, 2024) ##
 
+*   Enhanced `bin/dev` Script
+
+    Previously, `bin/dev` would only start the Rails server. Gems requiring multiple processes override the `bin/dev` script to start Foreman instead, which prevents interaction with the Rails server console (debugger).
+
+    This new `bin/dev` script starts Foreman in the background if a `Procfile.dev` is present and starts Rails in the foreground to allow debugging with breakpoints.
+
+    *Joé Dupuis*
+
 *   Exit `rails g` with code 1 if generator could not be found.
 
     Previously `rails g` returned 0, which would make it harder to catch typos in scripts calling `rails g`.
